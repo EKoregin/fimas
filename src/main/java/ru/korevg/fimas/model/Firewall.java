@@ -20,7 +20,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 @Entity
-@Table(name = "firewalls")
+@Table(name = "firewall")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -42,7 +42,7 @@ public class Firewall {
     @JoinColumn(name = "model_id", nullable = false)
     private Model model;
 
-    @OneToMany(mappedBy = "policy", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "firewall", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private Set<Policy> policies = new HashSet<>();
 

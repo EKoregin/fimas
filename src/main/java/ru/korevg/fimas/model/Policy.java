@@ -22,7 +22,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 @Entity
-@Table(name = "policies")
+@Table(name = "policy")
 @Getter
 @Setter
 @NoArgsConstructor

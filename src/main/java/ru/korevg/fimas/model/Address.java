@@ -12,10 +12,7 @@ import jakarta.persistence.Inheritance;
 import jakarta.persistence.InheritanceType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.util.HashSet;
@@ -24,12 +21,9 @@ import java.util.Set;
 @Entity
 @Inheritance(strategy = InheritanceType.JOINED)
 @DiscriminatorColumn(name = "address_type")
-@Table(name = "addresses")
+@Table(name = "address")
 @Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
 public abstract class Address {
 
     @Id
@@ -48,6 +42,5 @@ public abstract class Address {
             joinColumns = @JoinColumn(name = "address_id")
     )
     @Column(name = "inet_address", columnDefinition = "inet")
-    @Builder.Default
     private Set<String> addresses = new HashSet<>();
 }

@@ -34,5 +34,4 @@ public class Service {
 
     @ManyToMany
     private Set<Port> ports;
-
 }

@@ -1,3 +1,26 @@
 spring:
   application:
     name: fimas
+  jpa:
+    database: postgresql
+    show-sql: true
+    hibernate:
+      ddl-auto: none
+  datasource:
+    url: jdbc:postgresql://localhost:5432/fimas
+    username: fimas
+    password: fimas
+    driver-class-name: org.postgresql.Driver
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    url: jdbc:postgresql://localhost:5432/fimas
+    user: fimas
+    password: fimas
+
+server:
+  port: 8085
+
+logging:
+  level:
+    root: info
