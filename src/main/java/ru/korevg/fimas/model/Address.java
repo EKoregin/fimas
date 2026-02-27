@@ -1,13 +1,53 @@
 package ru.korevg.fimas.model;
 
-import java.net.InetAddress;
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.Column;
+import jakarta.persistence.DiscriminatorColumn;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Inheritance;
+import jakarta.persistence.InheritanceType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.util.HashSet;
 import java.util.Set;
 
-public interface Address {
+@Entity
+@Inheritance(strategy = InheritanceType.JOINED)
+@DiscriminatorColumn(name = "address_type")
+@Table(name = "addresses")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public abstract class Address {
 
-    public String getName();
-    public String getDescription();
-    public Set<InetAddress> getValue();
-    public boolean isDynamic();
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
+    @Column(nullable = false, length = 100)
+    private String name;
+
+    @Column(length = 500)
+    private String description;
+
+    @ElementCollection
+    @CollectionTable(
+            name = "inet_addresses",
+            joinColumns = @JoinColumn(name = "address_id")
+    )
+    @Column(name = "inet_address", columnDefinition = "inet")
+    @Builder.Default
+    private Set<String> addresses = new HashSet<>();
 }

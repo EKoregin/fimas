@@ -9,16 +9,19 @@ import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.util.Set;
 
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 @Entity
-@Table(name = "services")
+@Table(name = "service")
 public class Service {
 
     @Id
@@ -27,8 +30,6 @@ public class Service {
 
     @Column(unique = true, nullable = false)
     private String name;
-
-    @Column(name = "description ")
     private String description;
 
     @ManyToMany
