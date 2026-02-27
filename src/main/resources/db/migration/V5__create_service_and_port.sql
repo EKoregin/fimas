@@ -1,12 +1,17 @@
 CREATE TABLE port (
-                      id       BIGINT PRIMARY KEY,
+                      id       BIGSERIAL PRIMARY KEY,
                       protocol VARCHAR(20) NOT NULL,   -- TCP, UDP, ICMP и т.д.
-                      port     INTEGER NOT NULL,
+                      source_port VARCHAR(12) NULL ,
+                      dest_port VARCHAR(12) NULL
 
-                      CONSTRAINT uq_port_protocol_port UNIQUE (protocol, port)
 );
 
-COMMENT ON TABLE port IS 'Порты и протоколы (80/TCP, 443/TCP, 53/UDP и т.п.)';
+-- Опционально: индексы, если часто будете искать по портам
+CREATE INDEX idx_port_source_port ON port(source_port);
+CREATE INDEX idx_port_dest_port   ON port(dest_port);
+
+COMMENT ON COLUMN port.source_port IS 'Исходный порт или диапазон (например: 1024-65535, 80)';
+COMMENT ON COLUMN port.dest_port   IS 'Целевой порт или диапазон (например: 443, 8080-8090)';
 
 CREATE TABLE service (
                          id          BIGSERIAL PRIMARY KEY,
