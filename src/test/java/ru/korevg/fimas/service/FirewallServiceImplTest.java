@@ -1,6 +1,5 @@
 package ru.korevg.fimas.service;
 
-import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -17,6 +16,7 @@ import ru.korevg.fimas.entity.Firewall;
 import ru.korevg.fimas.entity.Model;
 import ru.korevg.fimas.entity.Vendor;
 import ru.korevg.fimas.exception.EntityExistsException;
+import ru.korevg.fimas.exception.EntityNotFoundException;
 import ru.korevg.fimas.mapper.FirewallMapper;
 import ru.korevg.fimas.repository.FirewallRepository;
 import ru.korevg.fimas.repository.ModelRepository;
@@ -136,7 +136,7 @@ class FirewallServiceImplTest {
                 .isInstanceOf(EntityExistsException.class)
                 .hasMessageContaining("Firewall с именем 'duplicate' уже существует");
 
-        verifyNoInteractions(modelRepository, firewallMapper, firewallRepository.save(any()));
+        verifyNoMoreInteractions(modelRepository, firewallMapper, firewallRepository);
     }
 
     @Test
