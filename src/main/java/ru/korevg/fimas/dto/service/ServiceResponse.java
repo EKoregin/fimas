@@ -8,5 +8,5 @@ public record ServiceResponse(
         String description,
         Set<PortShortResponse> ports
 ) {
-    public record PortShortResponse(Long id, String protocol, String srcPort, String destPort) {}
+    public record PortShortResponse(Long id, String protocol, String srcPort, String dstPort) {}
 }

@@ -5,8 +5,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.korevg.fimas.dto.address.*;
-import ru.korevg.fimas.entity.*;
+import ru.korevg.fimas.dto.address.AddressCommonCreateRequest;
+import ru.korevg.fimas.dto.address.AddressDynamicCreateRequest;
+import ru.korevg.fimas.dto.address.AddressResponse;
+import ru.korevg.fimas.entity.Address;
+import ru.korevg.fimas.entity.CommonAddress;
+import ru.korevg.fimas.entity.DynamicAddress;
+import ru.korevg.fimas.entity.Firewall;
 import ru.korevg.fimas.exception.EntityExistsException;
 import ru.korevg.fimas.exception.EntityNotFoundException;
 import ru.korevg.fimas.mapper.AddressMapper;
@@ -57,25 +62,27 @@ public class AddressServiceImpl implements AddressService {
 
     @Override
     @Transactional
-    public AddressResponse update(Long id, Object request) {
+    public AddressResponse updateCommon(Long id, AddressCommonCreateRequest request) {
         Address address = addressRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Адрес не найден"));
 
-        if (request instanceof AddressCommonCreateRequest common) {
-            addressMapper.updateCommonFromRequest(common, (CommonAddress) address);
-            ((CommonAddress) address).setAddresses(common.addresses());
-        } else if (request instanceof AddressDynamicCreateRequest dynamic) {
-            addressMapper.updateDynamicFromRequest(dynamic, (DynamicAddress) address);
-            ((DynamicAddress) address).setAddresses(dynamic.addresses());
+        addressMapper.updateCommonFromRequest(request, (CommonAddress) address);
+        address.setAddresses(address.getAddresses());
 
-            if (dynamic.firewallId() != null) {
-                Firewall fw = firewallRepository.findById(dynamic.firewallId())
-                        .orElseThrow(() -> new EntityNotFoundException("Firewall не найден"));
-                ((DynamicAddress) address).setFirewall(fw);
-            }
-        } else {
-            throw new IllegalArgumentException("Неподдерживаемый тип запроса");
-        }
+
+        Address updated = addressRepository.save(address);
+        return addressMapper.toResponse(updated);
+    }
+
+    @Override
+    @Transactional
+    public AddressResponse updateDynamic(Long id, AddressDynamicCreateRequest request) {
+        Address address = addressRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Адрес не найден"));
+
+        addressMapper.updateDynamicFromRequest(request, (DynamicAddress) address);
+        address.setAddresses(address.getAddresses());
+
 
         Address updated = addressRepository.save(address);
         return addressMapper.toResponse(updated);

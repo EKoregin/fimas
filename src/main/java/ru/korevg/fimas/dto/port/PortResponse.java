@@ -6,5 +6,5 @@ public record PortResponse(
         Long id,
         Protocol protocol,
         String srcPort,
-        String destPort
+        String dstPort
 ) {}

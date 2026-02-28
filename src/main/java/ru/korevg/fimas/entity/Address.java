@@ -41,6 +41,6 @@ public abstract class Address {
             name = "inet_addresses",
             joinColumns = @JoinColumn(name = "address_id")
     )
-    @Column(name = "inet_address", columnDefinition = "inet")
+    @Column(name = "inet_address", nullable = false, length = 45)
     private Set<String> addresses = new HashSet<>();
 }

@@ -9,6 +9,7 @@ import ru.korevg.fimas.dto.port.PortCreateRequest;
 import ru.korevg.fimas.dto.port.PortResponse;
 import ru.korevg.fimas.dto.port.PortUpdateRequest;
 import ru.korevg.fimas.entity.Port;
+import ru.korevg.fimas.entity.Protocol;
 import ru.korevg.fimas.exception.EntityExistsException;
 import ru.korevg.fimas.exception.EntityNotFoundException;
 import ru.korevg.fimas.mapper.PortMapper;
@@ -27,9 +28,9 @@ public class PortServiceImpl implements PortService {
     @Transactional
     public PortResponse create(PortCreateRequest request) {
         if (portRepository.existsByProtocolAndDstPort(
-                request.protocol().name(), request.destPort())) {
+                Protocol.valueOf(request.protocol()), request.dstPort())) {
             throw new EntityExistsException(
-                    "Порт " + request.protocol() + "/" + request.destPort() + " уже существует");
+                    "Порт " + request.protocol() + "/" + request.dstPort() + " уже существует");
         }
 
         Port port = portMapper.toEntity(request);

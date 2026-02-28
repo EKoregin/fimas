@@ -21,7 +21,7 @@ public class AddressController {
     private final AddressService addressService;
 
     @PostMapping("/common")
-    @Operation(summary = "Создать обычный адрес")
+    @Operation(summary = "Создать глобальный адрес")
     public ResponseEntity<AddressResponse> createCommon(@Valid @RequestBody AddressCommonCreateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(addressService.createCommon(request));
     }
@@ -38,11 +38,22 @@ public class AddressController {
         return ResponseEntity.ok(addressService.findById(id));
     }
 
-    @PutMapping("/{id}")
-    @Operation(summary = "Обновить адрес (Common или Dynamic)")
-    public ResponseEntity<AddressResponse> update(@PathVariable Long id,
-                                                  @RequestBody Object request) {
-        return ResponseEntity.ok(addressService.update(id, request));
+    @PutMapping("/common/{id}")
+    @Operation(summary = "Обновить глобальный адрес")
+    public ResponseEntity<AddressResponse> updateCommon(
+            @PathVariable Long id,
+            @Valid @RequestBody AddressCommonCreateRequest request) {
+
+        return ResponseEntity.ok(addressService.updateCommon(id, request));
+    }
+
+    @PutMapping("/dynamic/{id}")
+    @Operation(summary = "Обновить динамический адрес")
+    public ResponseEntity<AddressResponse> updateDynamic(
+            @PathVariable Long id,
+            @Valid @RequestBody AddressDynamicCreateRequest request) {
+
+        return ResponseEntity.ok(addressService.updateDynamic(id, request));
     }
 
     @DeleteMapping("/{id}")

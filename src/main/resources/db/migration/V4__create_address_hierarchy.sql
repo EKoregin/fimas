@@ -26,7 +26,7 @@ CREATE INDEX idx_dynamic_address_firewall_id ON dynamic_address(firewall_id);
 -- Коллекция IP-адресов (ElementCollection)
 CREATE TABLE inet_addresses (
                                 address_id    BIGINT NOT NULL REFERENCES address(id) ON DELETE CASCADE,
-                                inet_address  INET NOT NULL,
+                                inet_address  VARCHAR(45) NOT NULL,
 
                                 PRIMARY KEY (address_id, inet_address)
 );
