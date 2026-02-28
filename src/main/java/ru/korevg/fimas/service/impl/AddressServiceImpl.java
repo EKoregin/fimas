@@ -109,4 +109,9 @@ public class AddressServiceImpl implements AddressService {
         return addressRepository.findAll(pageable)
                 .map(addressMapper::toResponse);
     }
+
+    @Override
+    public long count() {
+        return addressRepository.count();
+    }
 }

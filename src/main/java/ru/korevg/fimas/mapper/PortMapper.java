@@ -3,6 +3,7 @@ package ru.korevg.fimas.mapper;
 import org.mapstruct.*;
 import ru.korevg.fimas.dto.port.PortCreateRequest;
 import ru.korevg.fimas.dto.port.PortResponse;
+import ru.korevg.fimas.dto.port.PortShortResponse;
 import ru.korevg.fimas.dto.port.PortUpdateRequest;
 import ru.korevg.fimas.entity.Port;
 
@@ -15,4 +16,6 @@ public interface PortMapper {
     void updateFromRequest(PortUpdateRequest request, @MappingTarget Port port);
 
     PortResponse toResponse(Port port);
+
+    PortShortResponse toShortResponse(Port port);
 }

@@ -1,5 +1,7 @@
 package ru.korevg.fimas.dto.service;
 
+import ru.korevg.fimas.dto.port.PortShortResponse;
+
 import java.util.Set;
 
 public record ServiceResponse(
@@ -7,6 +9,4 @@ public record ServiceResponse(
         String name,
         String description,
         Set<PortShortResponse> ports
-) {
-    public record PortShortResponse(Long id, String protocol, String srcPort, String dstPort) {}
-}
+) {}

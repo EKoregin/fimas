@@ -30,3 +30,7 @@ server:
 logging:
   level:
     root: info
+
+vaadin:
+  url-mapping: /app/*
+  exclude-urls: /swagger-ui/**,/v3/api-docs/**

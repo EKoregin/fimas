@@ -17,4 +17,6 @@ public interface FirewallService {
     FirewallResponse findById(Long id);
 
     Page<FirewallResponse> findAll(Pageable pageable);
+
+    long count();
 }

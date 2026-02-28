@@ -15,4 +15,6 @@ public interface AddressService {
     void delete(Long id);
     AddressResponse findById(Long id);
     Page<AddressResponse> findAll(Pageable pageable);
+
+    long count();
 }

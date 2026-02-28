@@ -13,4 +13,6 @@ public interface ServiceService {
     void delete(Long id);
     ServiceResponse findById(Long id);
     Page<ServiceResponse> findAll(Pageable pageable);
+
+    long count();
 }

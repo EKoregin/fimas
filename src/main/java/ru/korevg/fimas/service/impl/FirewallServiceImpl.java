@@ -83,4 +83,9 @@ public class FirewallServiceImpl implements FirewallService {
         return firewallRepository.findAll(pageable)
                 .map(firewallMapper::toResponse);
     }
+
+    @Override
+    public long count() {
+        return firewallRepository.count();
+    }
 }

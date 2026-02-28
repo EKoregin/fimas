@@ -1,6 +1,7 @@
 package ru.korevg.fimas.mapper;
 
 import org.mapstruct.*;
+import ru.korevg.fimas.dto.port.PortShortResponse;
 import ru.korevg.fimas.dto.service.ServiceCreateRequest;
 import ru.korevg.fimas.dto.service.ServiceResponse;
 import ru.korevg.fimas.dto.service.ServiceUpdateRequest;
@@ -23,10 +24,10 @@ public interface ServiceMapper {
     @Mapping(source = "ports", target = "ports")
     ServiceResponse toResponse(Service service);
 
-    default Set<ServiceResponse.PortShortResponse> mapPorts(Set<Port> ports) {
+    default Set<PortShortResponse> mapPorts(Set<Port> ports) {
         if (ports == null) return Set.of();
         return ports.stream()
-                .map(p -> new ServiceResponse.PortShortResponse(
+                .map(p -> new PortShortResponse(
                         p.getId(),
                         p.getProtocol().name(),
                         p.getSrcPort(),

@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.korevg.fimas.dto.port.PortCreateRequest;
 import ru.korevg.fimas.dto.port.PortResponse;
+import ru.korevg.fimas.dto.port.PortShortResponse;
 import ru.korevg.fimas.dto.port.PortUpdateRequest;
 import ru.korevg.fimas.entity.Port;
 import ru.korevg.fimas.entity.Protocol;
@@ -15,6 +16,9 @@ import ru.korevg.fimas.exception.EntityNotFoundException;
 import ru.korevg.fimas.mapper.PortMapper;
 import ru.korevg.fimas.repository.PortRepository;
 import ru.korevg.fimas.service.PortService;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -70,5 +74,17 @@ public class PortServiceImpl implements PortService {
     public Page<PortResponse> findAll(Pageable pageable) {
         return portRepository.findAll(pageable)
                 .map(portMapper::toResponse);
+    }
+
+    @Override
+    public long count() {
+        return portRepository.count();
+    }
+
+    @Override
+    public List<PortShortResponse> findAllShort() {
+        return portRepository.findAllShort().stream()
+                .map(p -> new PortShortResponse(p.getId(), p.getProtocol(), p.getSrcPort(), p.getDstPort()))
+                .collect(Collectors.toList());
     }
 }

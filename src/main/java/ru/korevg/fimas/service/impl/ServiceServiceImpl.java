@@ -97,4 +97,9 @@ public class ServiceServiceImpl implements ServiceService {
         return serviceRepository.findAll(pageable)
                 .map(serviceMapper::toResponse);
     }
+
+    @Override
+    public long count() {
+        return serviceRepository.count();
+    }
 }
