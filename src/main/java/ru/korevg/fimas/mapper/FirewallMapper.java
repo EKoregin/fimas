@@ -17,6 +17,7 @@ public interface FirewallMapper {
     @Mapping(target = "dynamicAddresses", ignore = true)
     void updateFromRequest(FirewallUpdateRequest request, @MappingTarget Firewall firewall);
 
+    @Mapping(source = "model.id", target = "modelId")
     @Mapping(source = "model.name", target = "modelName")
     @Mapping(source = "model.vendor.name", target = "vendorName")
     FirewallResponse toResponse(Firewall firewall);

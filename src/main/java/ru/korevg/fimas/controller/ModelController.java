@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import ru.korevg.fimas.dto.model.ModelCreateRequest;
 import ru.korevg.fimas.dto.model.ModelResponse;
 import ru.korevg.fimas.dto.model.ModelUpdateRequest;
+import ru.korevg.fimas.exception.EntityNotFoundException;
 import ru.korevg.fimas.service.ModelService;
 
 @RestController
@@ -31,7 +32,9 @@ public class ModelController {
     @GetMapping("/{id}")
     @Operation(summary = "Получить модель по ID")
     public ResponseEntity<ModelResponse> getById(@PathVariable Long id) {
-        return ResponseEntity.ok(modelService.findById(id));
+        return ResponseEntity.ok(modelService.findById(id).orElseThrow(
+                () -> new EntityNotFoundException("Модель с ID " + id + " не найдена")
+        ));
     }
 
     @PutMapping("/{id}")

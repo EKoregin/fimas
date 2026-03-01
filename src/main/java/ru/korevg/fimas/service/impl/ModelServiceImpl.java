@@ -17,6 +17,10 @@ import ru.korevg.fimas.repository.ModelRepository;
 import ru.korevg.fimas.repository.VendorRepository;
 import ru.korevg.fimas.service.ModelService;
 
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -73,15 +77,21 @@ public class ModelServiceImpl implements ModelService {
     }
 
     @Override
-    public ModelResponse findById(Long id) {
-        Model model = modelRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Модель с ID " + id + " не найдена"));
-        return modelMapper.toResponse(model);
+    public Optional<ModelResponse> findById(Long id) {
+        return modelRepository.findById(id)
+                .map(modelMapper::toResponse);
     }
 
     @Override
     public Page<ModelResponse> findAll(Pageable pageable) {
         return modelRepository.findAll(pageable)
                 .map(modelMapper::toResponse);
+    }
+
+    @Override
+    public List<ModelResponse> findAll() {
+        return modelRepository.findAll().stream()
+                .map(model -> new ModelResponse(model.getId(), model.getName(), model.getVendor().getName()))
+                .collect(Collectors.toList());
     }
 }

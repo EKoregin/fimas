@@ -6,6 +6,9 @@ import ru.korevg.fimas.dto.model.ModelCreateRequest;
 import ru.korevg.fimas.dto.model.ModelResponse;
 import ru.korevg.fimas.dto.model.ModelUpdateRequest;
 
+import java.util.List;
+import java.util.Optional;
+
 public interface ModelService {
 
     ModelResponse create(ModelCreateRequest request);
@@ -14,7 +17,9 @@ public interface ModelService {
 
     void delete(Long id);
 
-    ModelResponse findById(Long id);
+    Optional<ModelResponse> findById(Long id);
 
     Page<ModelResponse> findAll(Pageable pageable);
+
+    List<ModelResponse> findAll();
 }
