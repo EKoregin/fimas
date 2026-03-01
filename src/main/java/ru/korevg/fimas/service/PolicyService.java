@@ -6,6 +6,8 @@ import ru.korevg.fimas.dto.policy.PolicyCreateRequest;
 import ru.korevg.fimas.dto.policy.PolicyResponse;
 import ru.korevg.fimas.dto.policy.PolicyUpdateRequest;
 
+import java.util.List;
+
 public interface PolicyService {
 
     PolicyResponse create(PolicyCreateRequest request);
@@ -18,5 +20,11 @@ public interface PolicyService {
 
     Page<PolicyResponse> findAll(Pageable pageable);
 
+    List<PolicyResponse> findAll();
+
     Page<PolicyResponse> findByFirewallId(Long firewallId, Pageable pageable);
+
+    long countByFirewallId(Long firewallId);
+
+    long count();
 }

@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import ru.korevg.fimas.dto.firewall.FirewallCreateRequest;
 import ru.korevg.fimas.dto.firewall.FirewallResponse;
 import ru.korevg.fimas.dto.firewall.FirewallUpdateRequest;
+import ru.korevg.fimas.exception.EntityNotFoundException;
 import ru.korevg.fimas.service.FirewallService;
 
 @RestController
@@ -32,7 +33,8 @@ public class FirewallController {
     @GetMapping("/{id}")
     @Operation(summary = "Получить firewall по ID")
     public ResponseEntity<FirewallResponse> getById(@PathVariable Long id) {
-        return ResponseEntity.ok(firewallService.findById(id));
+        return ResponseEntity.ok(firewallService.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Firewall с ID " + id + " не найден")));
     }
 
     @PutMapping("/{id}")

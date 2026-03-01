@@ -18,6 +18,7 @@ import ru.korevg.fimas.repository.ModelRepository;
 import ru.korevg.fimas.service.FirewallService;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -75,10 +76,9 @@ public class FirewallServiceImpl implements FirewallService {
     }
 
     @Override
-    public FirewallResponse findById(Long id) {
-        Firewall firewall = firewallRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Firewall с ID " + id + " не найден"));
-        return firewallMapper.toResponse(firewall);
+    public Optional<FirewallResponse> findById(Long id) {
+        return firewallRepository.findById(id)
+                .map(firewallMapper::toResponse);
     }
 
     @Override

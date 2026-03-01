@@ -5,6 +5,9 @@ import org.springframework.data.domain.Pageable;
 import ru.korevg.fimas.dto.address.AddressCommonCreateRequest;
 import ru.korevg.fimas.dto.address.AddressDynamicCreateRequest;
 import ru.korevg.fimas.dto.address.AddressResponse;
+import ru.korevg.fimas.dto.address.AddressShortResponse;
+
+import java.util.List;
 
 public interface AddressService {
 
@@ -19,4 +22,6 @@ public interface AddressService {
 
     long count();
     long count(String search);
+
+    List<AddressShortResponse> findAllShort();
 }

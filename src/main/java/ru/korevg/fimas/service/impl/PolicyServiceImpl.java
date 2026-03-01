@@ -15,6 +15,7 @@ import ru.korevg.fimas.repository.*;
 import ru.korevg.fimas.service.PolicyService;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -162,8 +163,23 @@ public class PolicyServiceImpl implements PolicyService {
     }
 
     @Override
+    public List<PolicyResponse> findAll() {
+        return policyRepository.findAll().stream().map(policyMapper::toResponse).collect(Collectors.toList());
+    }
+
+    @Override
     public Page<PolicyResponse> findByFirewallId(Long firewallId, Pageable pageable) {
         return policyRepository.findByFirewallId(firewallId, pageable)
                 .map(policyMapper::toResponse);
+    }
+
+    @Override
+    public long countByFirewallId(Long firewallId) {
+        return policyRepository.countByFirewallId(firewallId);
+    }
+
+    @Override
+    public long count() {
+        return policyRepository.count();
     }
 }

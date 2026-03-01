@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
 import ru.korevg.fimas.dto.service.ServiceCreateRequest;
 import ru.korevg.fimas.dto.service.ServiceResponse;
+import ru.korevg.fimas.dto.service.ServiceShortResponse;
 import ru.korevg.fimas.dto.service.ServiceUpdateRequest;
 import ru.korevg.fimas.entity.Port;
 import ru.korevg.fimas.entity.Service;
@@ -18,6 +19,7 @@ import ru.korevg.fimas.repository.ServiceRepository;
 import ru.korevg.fimas.service.ServiceService;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -99,6 +101,11 @@ public class ServiceServiceImpl implements ServiceService {
     public Page<ServiceResponse> findAll(Pageable pageable) {
         return serviceRepository.findAll(pageable)
                 .map(serviceMapper::toResponse);
+    }
+
+    @Override
+    public List<ServiceShortResponse> findAllShort() {
+        return serviceRepository.findAllShort();
     }
 
     @Override

@@ -1,9 +1,11 @@
 package ru.korevg.fimas.mapper;
 
 import org.mapstruct.*;
+import ru.korevg.fimas.dto.address.AddressShortResponse;
 import ru.korevg.fimas.dto.policy.PolicyCreateRequest;
 import ru.korevg.fimas.dto.policy.PolicyResponse;
 import ru.korevg.fimas.dto.policy.PolicyUpdateRequest;
+import ru.korevg.fimas.dto.service.ServiceShortResponse;
 import ru.korevg.fimas.entity.*;
 
 import java.util.Set;
@@ -32,17 +34,17 @@ public interface PolicyMapper {
     @Mapping(source = "services", target = "services")
     PolicyResponse toResponse(Policy policy);
 
-    default Set<PolicyResponse.AddressShortResponse> mapAddresses(Set<Address> addresses) {
+    default Set<AddressShortResponse> mapAddresses(Set<Address> addresses) {
         if (addresses == null) return Set.of();
         return addresses.stream()
-                .map(a -> new PolicyResponse.AddressShortResponse(a.getId(), a.getName()))
+                .map(a -> new AddressShortResponse(a.getId(), a.getName()))
                 .collect(Collectors.toSet());
     }
 
-    default Set<PolicyResponse.ServiceShortResponse> mapServices(Set<Service> services) {
+    default Set<ServiceShortResponse> mapServices(Set<Service> services) {
         if (services == null) return Set.of();
         return services.stream()
-                .map(s -> new PolicyResponse.ServiceShortResponse(s.getId(), s.getName()))
+                .map(s -> new ServiceShortResponse(s.getId(), s.getName()))
                 .collect(Collectors.toSet());
     }
 }

@@ -1,5 +1,7 @@
 package ru.korevg.fimas.dto.policy;
 
+import ru.korevg.fimas.dto.address.AddressShortResponse;
+import ru.korevg.fimas.dto.service.ServiceShortResponse;
 import ru.korevg.fimas.entity.PolicyAction;
 import ru.korevg.fimas.entity.PolicyStatus;
 
@@ -16,7 +18,4 @@ public record PolicyResponse(
         Set<AddressShortResponse> srcAddresses,
         Set<AddressShortResponse> dstAddresses,
         Set<ServiceShortResponse> services
-) {
-    public record AddressShortResponse(Long id, String name) {}
-    public record ServiceShortResponse(Long id, String name) {}
-}
+) {}

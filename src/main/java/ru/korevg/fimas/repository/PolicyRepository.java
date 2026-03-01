@@ -19,4 +19,6 @@ public interface PolicyRepository extends JpaRepository<Policy, Long> {
     List<Policy> findByFirewallId(Long firewallId);
 
     Page<Policy> findByFirewallId(Long firewallId, Pageable pageable);
+
+    long countByFirewallId(Long firewallId);
 }

@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import ru.korevg.fimas.dto.address.AddressCommonCreateRequest;
 import ru.korevg.fimas.dto.address.AddressDynamicCreateRequest;
 import ru.korevg.fimas.dto.address.AddressResponse;
+import ru.korevg.fimas.dto.address.AddressShortResponse;
 import ru.korevg.fimas.entity.Address;
 import ru.korevg.fimas.entity.CommonAddress;
 import ru.korevg.fimas.entity.DynamicAddress;
@@ -19,6 +20,8 @@ import ru.korevg.fimas.mapper.AddressMapper;
 import ru.korevg.fimas.repository.AddressRepository;
 import ru.korevg.fimas.repository.FirewallRepository;
 import ru.korevg.fimas.service.AddressService;
+
+import java.util.List;
 
 @Slf4j
 @Service
@@ -138,5 +141,10 @@ public class AddressServiceImpl implements AddressService {
         }
         String pattern = "%" + search.trim().toLowerCase() + "%";
         return addressRepository.countBySearchPattern(pattern);
+    }
+
+    @Override
+    public List<AddressShortResponse> findAllShort() {
+        return addressRepository.findAllShort();
     }
 }

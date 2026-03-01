@@ -6,7 +6,6 @@ import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
 import com.vaadin.flow.component.grid.ColumnTextAlign;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
-import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
@@ -15,6 +14,7 @@ import com.vaadin.flow.data.provider.DataProvider;
 import com.vaadin.flow.data.provider.SortDirection;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.router.RouteParameters;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -22,6 +22,7 @@ import ru.korevg.fimas.dto.firewall.FirewallResponse;
 import ru.korevg.fimas.service.FirewallService;
 import ru.korevg.fimas.service.ModelService;
 import ru.korevg.fimas.views.layout.MainLayout;
+import ru.korevg.fimas.views.policy.PolicyListView;
 
 @PageTitle("Firewalls")
 @Route(value = "firewalls", layout = MainLayout.class)
@@ -76,6 +77,20 @@ public class FirewallListView extends VerticalLayout {
         grid.addColumn(FirewallResponse::vendorName)
                 .setHeader("Производитель")
                 .setWidth("160px");
+
+        grid.addComponentColumn(fw -> new Button("Политики", e ->
+                getUI().ifPresent(ui -> ui.navigate("firewalls/" + fw.id() + "/policies"))
+        )).setHeader("Политики").setWidth("120px");
+        // В configureGrid() или где создаётся колонка
+//        grid.addComponentColumn(fw -> {
+//            Button btn = new Button("Политики");
+//            btn.addClickListener(e -> {
+//                getUI().ifPresent(ui ->
+//                        ui.navigate(PolicyListView.class, new RouteParameters("firewallId", fw.id().toString()))
+//                );
+//            });
+//            return btn;
+//        }).setHeader("Политики").setWidth("120px");
 
         // Действия
         grid.addComponentColumn(fw -> {
