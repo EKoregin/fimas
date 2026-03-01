@@ -36,6 +36,7 @@ public class ServiceForm extends VerticalLayout {
 
     private ServiceResponse currentService;
     private Dialog dialog;
+    private Runnable afterSaveCallback;
 
     public ServiceForm(ServiceService serviceService, PortService portService) {
         this.serviceService = serviceService;
@@ -55,6 +56,10 @@ public class ServiceForm extends VerticalLayout {
                 selectedPortsGrid,
                 createButtonsLayout()
         );
+    }
+
+    public void setAfterSaveCallback(Runnable callback) {
+        this.afterSaveCallback = callback;
     }
 
     private void configureFields() {
@@ -180,6 +185,10 @@ public class ServiceForm extends VerticalLayout {
 
             Notification.show("Сервис сохранён успешно")
                     .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+
+            if (afterSaveCallback != null) {
+                afterSaveCallback.run();
+            }
 
             if (dialog != null) {
                 dialog.close();

@@ -17,6 +17,9 @@ import ru.korevg.fimas.repository.FirewallRepository;
 import ru.korevg.fimas.repository.ModelRepository;
 import ru.korevg.fimas.service.FirewallService;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -82,6 +85,13 @@ public class FirewallServiceImpl implements FirewallService {
     public Page<FirewallResponse> findAll(Pageable pageable) {
         return firewallRepository.findAll(pageable)
                 .map(firewallMapper::toResponse);
+    }
+
+    @Override
+    public List<FirewallResponse> findAll() {
+        return firewallRepository.findAll()
+                .stream().map(firewallMapper::toResponse)
+                .collect(Collectors.toList());
     }
 
     @Override

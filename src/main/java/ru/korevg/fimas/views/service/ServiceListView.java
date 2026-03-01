@@ -1,9 +1,15 @@
 package ru.korevg.fimas.views.service;
 
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
+import com.vaadin.flow.component.grid.ColumnTextAlign;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.icon.VaadinIcon;
+import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.data.provider.DataProvider;
 import com.vaadin.flow.data.provider.SortDirection;
@@ -13,8 +19,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import ru.korevg.fimas.dto.service.ServiceResponse;
+import ru.korevg.fimas.service.AddressService;
 import ru.korevg.fimas.service.PortService;
-import ru.korevg.fimas.service.ServiceService;  // предполагаемое имя сервиса
+import ru.korevg.fimas.service.ServiceService;
 import ru.korevg.fimas.views.layout.MainLayout;
 
 import java.util.stream.Collectors;
@@ -28,19 +35,17 @@ public class ServiceListView extends VerticalLayout {
 
     private final Grid<ServiceResponse> grid = new Grid<>(ServiceResponse.class, false);
 
-    public ServiceListView(ServiceService serviceService, PortService portService) {
+    public ServiceListView(ServiceService serviceService, PortService portService, AddressService addressService) {
         this.serviceService = serviceService;
         this.portService = portService;
 
-        System.out.println("Всего сервисов в базе: " + serviceService.count());
-
         setSizeFull();
         addClassName("service-list-view");
-
         configureGrid();
+
+        Button createBtn = new Button("Создать сервис", e -> openCreateForm());
+        add(createBtn);
         add(grid);
-        // В конце конструктора, после add(grid)
-        grid.getDataCommunicator().setRequestedRange(0, 10);  // запрашиваем первую страницу явно
     }
 
     private void configureGrid() {
@@ -51,7 +56,6 @@ public class ServiceListView extends VerticalLayout {
         );
         grid.setSizeFull();
 
-        // Колонки
         grid.addColumn(ServiceResponse::id)
                 .setHeader("ID")
                 .setSortable(true)
@@ -69,7 +73,6 @@ public class ServiceListView extends VerticalLayout {
                 .setHeader("Описание")
                 .setFlexGrow(3);
 
-        // Колонка с портами — компактное отображение
         grid.addComponentColumn(service -> {
                     if (service.ports() == null || service.ports().isEmpty()) {
                         return new Span("—");
@@ -95,7 +98,6 @@ public class ServiceListView extends VerticalLayout {
                 .setFlexGrow(2)
                 .setSortable(false);  // сортировка по коллекции обычно не нужна
 
-        // Пагинация
         grid.setSizeFull();
 
         // Серверная пагинация + сортировка
@@ -112,7 +114,7 @@ public class ServiceListView extends VerticalLayout {
                                             : Sort.Direction.DESC,
                                     order.getSorted()
                             ))
-                            .orElse(Sort.by("name").ascending());
+                            .orElse(Sort.by("id").ascending());
 
                     Pageable pageable = PageRequest.of(page, pageSize, sort);
 
@@ -122,22 +124,61 @@ public class ServiceListView extends VerticalLayout {
                 query -> (int) serviceService.count()
         ));
 
-        // В configureGrid() добавь колонку действий
         grid.addComponentColumn(service -> {
-            Button editBtn = new Button("Редактировать");
-            editBtn.addClickListener(e -> {
-                ServiceForm form = new ServiceForm(serviceService, portService);
-                form.openEditDialog(service);
-            });
+                    Button editBtn = new Button(VaadinIcon.EDIT.create());
+                    editBtn.setTooltipText("Редактировать");
+                    editBtn.addClickListener(e -> openEditForm(service));
+                    editBtn.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
 
-            return editBtn;
-        }).setHeader("Действия").setFlexGrow(0).setWidth("140px");
+                    Button delete = new Button(VaadinIcon.TRASH.create());
+                    delete.setTooltipText("Удалить");
+                    delete.addClickListener(e -> showDeleteConfirm(service.id()));
+                    delete.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
 
-        // Кнопка создания — в конструкторе или отдельно
-        Button createBtn = new Button("Создать сервис", e -> {
-            ServiceForm form = new ServiceForm(serviceService, portService);
-            form.openCreateDialog();
+                    HorizontalLayout layout = new HorizontalLayout(editBtn, delete);
+                    layout.setPadding(false);
+                    layout.setSpacing(false);           // или очень маленькое: layout.setSpacing(Size.SMALL);
+                    layout.setAlignItems(Alignment.CENTER);
+
+                    return layout;
+                }).setHeader("Действия")
+                .setFlexGrow(0)
+                .setWidth("140px")
+                .setTextAlign(ColumnTextAlign.CENTER);
+    }
+
+    private void openEditForm(ServiceResponse service) {
+        ServiceForm form = new ServiceForm(serviceService, portService);
+        form.setAfterSaveCallback(() -> grid.getDataProvider().refreshAll());
+        form.openEditDialog(service);
+    }
+
+    private void openCreateForm() {
+        ServiceForm form = new ServiceForm(serviceService, portService);
+        form.setAfterSaveCallback(() -> grid.getDataProvider().refreshAll());
+        form.openCreateDialog();
+    }
+
+    private void showDeleteConfirm(Long id) {
+        ConfirmDialog dialog = new ConfirmDialog();
+        dialog.setHeader("Удалить сервис?");
+        dialog.setText("Это действие нельзя отменить.");
+        dialog.setConfirmText("Удалить");
+
+        dialog.setCancelable(true);
+        dialog.setCancelText("Отмена");
+        dialog.addConfirmListener(e -> {
+            try {
+                serviceService.delete(id);
+                grid.getDataProvider().refreshAll();
+                Notification.show("Сервис удалён", 3000, Notification.Position.TOP_CENTER);
+            } catch (Exception ex) {
+                Notification.show("Ошибка: " + ex.getMessage(), 5000, Notification.Position.MIDDLE);
+            }
         });
-        add(createBtn);
+        dialog.addCancelListener(e -> {
+            Notification.show("Удаление отменено", 2000, Notification.Position.BOTTOM_START);
+        });
+        dialog.open();
     }
 }

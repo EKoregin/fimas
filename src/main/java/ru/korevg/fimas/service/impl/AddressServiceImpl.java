@@ -1,6 +1,7 @@
 package ru.korevg.fimas.service.impl;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -19,6 +20,7 @@ import ru.korevg.fimas.repository.AddressRepository;
 import ru.korevg.fimas.repository.FirewallRepository;
 import ru.korevg.fimas.service.AddressService;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -95,6 +97,7 @@ public class AddressServiceImpl implements AddressService {
             throw new EntityNotFoundException("Адрес не найден");
         }
         addressRepository.deleteById(id);
+        log.info("Service with ID: {} deleted.", id);
     }
 
     @Override
@@ -113,5 +116,27 @@ public class AddressServiceImpl implements AddressService {
     @Override
     public long count() {
         return addressRepository.count();
+    }
+
+    @Override
+    public Page<AddressResponse> findAll(Pageable pageable, String search) {
+        if (search == null || search.trim().isEmpty()) {
+            return addressRepository.findAll(pageable)
+                    .map(addressMapper::toResponse);
+        }
+
+        String pattern = "%" + search.trim().toLowerCase() + "%";
+
+        Page<Address> page = addressRepository.findBySearchPattern(pattern, pageable);
+        return page.map(addressMapper::toResponse);
+    }
+
+    @Override
+    public long count(String search) {
+        if (search == null || search.trim().isEmpty()) {
+            return addressRepository.count();
+        }
+        String pattern = "%" + search.trim().toLowerCase() + "%";
+        return addressRepository.countBySearchPattern(pattern);
     }
 }

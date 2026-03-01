@@ -1,6 +1,7 @@
 package ru.korevg.fimas.service.impl;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +21,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+@Slf4j
 @org.springframework.stereotype.Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -83,6 +85,7 @@ public class ServiceServiceImpl implements ServiceService {
             throw new EntityNotFoundException("Сервис с ID " + id + " не найден");
         }
         serviceRepository.deleteById(id);
+        log.info("Service with ID {} was deleted", id);
     }
 
     @Override

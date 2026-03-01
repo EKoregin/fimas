@@ -6,6 +6,8 @@ import ru.korevg.fimas.dto.firewall.FirewallCreateRequest;
 import ru.korevg.fimas.dto.firewall.FirewallResponse;
 import ru.korevg.fimas.dto.firewall.FirewallUpdateRequest;
 
+import java.util.List;
+
 public interface FirewallService {
 
     FirewallResponse create(FirewallCreateRequest request);
@@ -17,6 +19,8 @@ public interface FirewallService {
     FirewallResponse findById(Long id);
 
     Page<FirewallResponse> findAll(Pageable pageable);
+
+    List<FirewallResponse> findAll();
 
     long count();
 }

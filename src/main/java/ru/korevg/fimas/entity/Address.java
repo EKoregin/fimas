@@ -43,4 +43,12 @@ public abstract class Address {
     )
     @Column(name = "inet_address", nullable = false, length = 45)
     private Set<String> addresses = new HashSet<>();
+
+    @Column(name = "address_type", insertable = false, updatable = false)
+    private String addressType;
+
+    // опционально — геттер с вычисляемым значением
+    public String getAddressType() {
+        return this instanceof CommonAddress ? "COMMON" : "DYNAMIC";
+    }
 }

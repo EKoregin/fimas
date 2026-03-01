@@ -1,6 +1,10 @@
 package ru.korevg.fimas.repository;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import ru.korevg.fimas.entity.Address;
 
@@ -8,4 +12,30 @@ import ru.korevg.fimas.entity.Address;
 public interface AddressRepository extends JpaRepository<Address, Long> {
 
     boolean existsByName(String name);
+
+    @Query("""
+    SELECT a FROM Address a
+    LEFT JOIN a.firewall f
+    WHERE LOWER(a.name) LIKE LOWER(:pattern)
+       OR LOWER(a.description) LIKE LOWER(:pattern)
+       OR LOWER(f.name) LIKE LOWER(:pattern)
+       OR EXISTS (
+           SELECT 1 FROM a.addresses addr
+           WHERE LOWER(addr) LIKE LOWER(:pattern)
+       )
+    """)
+    Page<Address> findBySearchPattern(@Param("pattern") String pattern, Pageable pageable);
+
+    @Query("""
+    SELECT COUNT(a) FROM Address a
+    LEFT JOIN a.firewall f
+    WHERE LOWER(a.name) LIKE LOWER(:pattern)
+       OR LOWER(a.description) LIKE LOWER(:pattern)
+       OR LOWER(f.name) LIKE LOWER(:pattern)
+       OR EXISTS (
+           SELECT 1 FROM a.addresses addr
+           WHERE LOWER(addr) LIKE LOWER(:pattern)
+       )
+    """)
+    long countBySearchPattern(@Param("pattern") String pattern);
 }

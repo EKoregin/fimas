@@ -15,6 +15,8 @@ public interface AddressService {
     void delete(Long id);
     AddressResponse findById(Long id);
     Page<AddressResponse> findAll(Pageable pageable);
+    Page<AddressResponse> findAll(Pageable pageable, String search);  // search может быть null
 
     long count();
+    long count(String search);
 }
