@@ -22,6 +22,7 @@ import ru.korevg.fimas.dto.service.ServiceResponse;
 import ru.korevg.fimas.service.AddressService;
 import ru.korevg.fimas.service.PortService;
 import ru.korevg.fimas.service.ServiceService;
+import ru.korevg.fimas.validation.ValidPortRangeValidator;
 import ru.korevg.fimas.views.layout.MainLayout;
 
 import java.util.stream.Collectors;
@@ -46,6 +47,7 @@ public class ServiceListView extends VerticalLayout {
         Button createBtn = new Button("Создать сервис", e -> openCreateForm());
         add(createBtn);
         add(grid);
+
     }
 
     private void configureGrid() {

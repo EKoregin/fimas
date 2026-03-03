@@ -28,7 +28,7 @@ public class ValidPortRangeValidator implements ConstraintValidator<ValidPortRan
         }
 
         String startStr = parts[0].trim();
-        String endStr   = parts[1].trim();
+        String endStr = parts[1].trim();
 
         if (!isValidPortNumber(startStr, context) || !isValidPortNumber(endStr, context)) {
             return false;
@@ -36,7 +36,7 @@ public class ValidPortRangeValidator implements ConstraintValidator<ValidPortRan
 
         try {
             int start = Integer.parseInt(startStr);
-            int end   = Integer.parseInt(endStr);
+            int end = Integer.parseInt(endStr);
 
             if (start > end) {
                 context.disableDefaultConstraintViolation();

@@ -1,5 +1,6 @@
 package ru.korevg.fimas.service.impl;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -16,6 +17,7 @@ import ru.korevg.fimas.exception.EntityNotFoundException;
 import ru.korevg.fimas.mapper.PortMapper;
 import ru.korevg.fimas.repository.PortRepository;
 import ru.korevg.fimas.service.PortService;
+import ru.korevg.fimas.validation.ValidPortRange;
 
 import java.util.List;
 import java.util.stream.Collectors;
