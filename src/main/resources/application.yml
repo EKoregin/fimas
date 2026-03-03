@@ -30,7 +30,10 @@ server:
 logging:
   level:
     root: info
+    org.atmosphere: WARN   # или ERROR, если совсем убрать WARN
+      # или точнее:
+    org.atmosphere.cpr.AtmosphereResourceImpl: ERROR
+    com.vaadin.flow.server.communication.PushHandler: WARN  # или INFO
 
 vaadin:
-  url-mapping: /app/*
   exclude-urls: /swagger-ui/**,/v3/api-docs/**

@@ -77,6 +77,10 @@ public class PolicyForm extends Dialog {
         statusCombo.setItemLabelGenerator(Enum::name);
         statusCombo.setRequired(true);
 
+        srcCombo.setWidthFull();
+        dstCombo.setWidthFull();
+        svcCombo.setWidthFull();
+
         // Загружаем списки
         srcCombo.setItems(addressService.findAllShort());
         srcCombo.setItemLabelGenerator(AddressShortResponse::name);
@@ -99,6 +103,9 @@ public class PolicyForm extends Dialog {
         tabs.add("Source Addresses", srcCombo);
         tabs.add("Dest Addresses", dstCombo);
         tabs.add("Сервисы", svcCombo);
+
+        tabs.setWidthFull();
+        tabs.setHeightFull();
 
         Button save = new Button("Сохранить", e -> save());
         save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);

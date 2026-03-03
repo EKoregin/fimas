@@ -1,12 +1,15 @@
 package ru.korevg.fimas.views.policy;
 
 import com.vaadin.flow.component.AttachEvent;
+import com.vaadin.flow.component.Component;
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
 import com.vaadin.flow.component.grid.ColumnTextAlign;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
+import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
@@ -15,16 +18,24 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.data.provider.DataProvider;
 import com.vaadin.flow.data.provider.SortDirection;
+import com.vaadin.flow.data.renderer.ComponentRenderer;
 import com.vaadin.flow.router.Route;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import ru.korevg.fimas.dto.RecordWithName;
 import ru.korevg.fimas.dto.policy.PolicyResponse;
 import ru.korevg.fimas.service.AddressService;
 import ru.korevg.fimas.service.FirewallService;
 import ru.korevg.fimas.service.PolicyService;
 import ru.korevg.fimas.service.ServiceService;
+import ru.korevg.fimas.views.firewall.FirewallListView;
 import ru.korevg.fimas.views.layout.MainLayout;
+
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import static org.atmosphere.util.IOUtils.close;
 
 @Route(value = "firewalls/:firewallId/policies", layout = MainLayout.class)
 public class PolicyListView extends VerticalLayout {
@@ -52,7 +63,13 @@ public class PolicyListView extends VerticalLayout {
         add(grid);
 
         Button addBtn = new Button("Добавить политику", e -> openPolicyForm(null));
-        add(addBtn);
+        Button cancel = new Button("Отмена", e -> {
+            close();
+            UI.getCurrent().navigate(FirewallListView.class);
+        });
+        HorizontalLayout buttons = new HorizontalLayout(addBtn, cancel);
+
+        add(buttons);
     }
 
     @Override
@@ -65,8 +82,6 @@ public class PolicyListView extends VerticalLayout {
         if (parts.length >= 3 && parts[0].equals("firewalls")) {
             try {
                 firewallId = Long.parseLong(parts[1]);
-                System.out.println("Извлечённый firewallId: " + firewallId);
-
                 firewallService.findById(firewallId).ifPresentOrElse(
                         fw -> {
                             H2 title = new H2("Политики для Firewall: " + fw.name());
@@ -86,22 +101,57 @@ public class PolicyListView extends VerticalLayout {
     }
 
     private void configureGrid() {
-        System.out.println("Конфигурируем GRID с firewallId = " + firewallId);
-
-        grid.addThemeVariants(GridVariant.LUMO_ROW_STRIPES, GridVariant.LUMO_COMPACT);
+        grid.addThemeVariants(GridVariant.LUMO_WRAP_CELL_CONTENT);
         grid.setPageSize(20);
 
-        grid.addColumn(PolicyResponse::id).setHeader("ID").setWidth("80px").setFlexGrow(0);
-        grid.addColumn(PolicyResponse::name).setHeader("Имя").setSortable(true).setKey("name");
-        grid.addColumn(PolicyResponse::action).setHeader("Действие").setWidth("120px");
-        grid.addColumn(PolicyResponse::status).setHeader("Статус").setWidth("120px");
+        grid.addColumn(PolicyResponse::id)
+                .setHeader("ID")
+                .setWidth("80px")
+                .setFlexGrow(0)
+                .setAutoWidth(false);
 
-        // Кол-во адресов/сервисов (чипы или текст)
-        grid.addComponentColumn(p -> new HorizontalLayout(
-                createCountBadge("Src", p.srcAddresses().size()),
-                createCountBadge("Dst", p.dstAddresses().size()),
-                createCountBadge("Svc", p.services().size())
-        )).setHeader("Адреса / Сервисы").setFlexGrow(1);
+        grid.addColumn(PolicyResponse::name)
+                .setHeader("Имя")
+                .setSortable(true)
+                .setKey("name")
+                .setWidth("180px")
+                .setFlexGrow(0)
+                .setAutoWidth(false);
+
+        grid.addColumn(new ComponentRenderer<>(
+                        policy -> createMultilineCell(formatSet(policy.srcAddresses()))
+                ))
+                .setHeader("Sources")
+                .setFlexGrow(1)
+                .setAutoWidth(true)
+                .setResizable(true);
+
+        grid.addColumn(new ComponentRenderer<>(
+                        policy -> createMultilineCell(formatSet(policy.dstAddresses()))
+                ))
+                .setHeader("Destination")
+                .setFlexGrow(1)
+                .setAutoWidth(true)
+                .setResizable(true);
+
+        grid.addColumn(new ComponentRenderer<>(policy -> {
+                    Div div = new Div();
+                    div.getStyle()
+                            .set("white-space", "pre-line")
+                            .set("line-height", "1.4");
+
+                    String text = formatSet(policy.services());
+                    div.setText(text);
+
+                    return div;
+                }))
+                .setHeader("Services")
+                .setFlexGrow(1)
+                .setAutoWidth(true)
+                .setResizable(true);
+
+        grid.addColumn(PolicyResponse::action).setHeader("Action").setFlexGrow(0);
+        grid.addColumn(PolicyResponse::status).setHeader("Status").setFlexGrow(0);
 
         grid.addComponentColumn(p -> {
             Button edit = new Button(VaadinIcon.EDIT.create());
@@ -201,4 +251,21 @@ public class PolicyListView extends VerticalLayout {
         grid.getDataProvider().refreshAll();
     }
 
+    // Вспомогательный метод для красивого вывода множеств
+    private String formatSet(Set<? extends RecordWithName> items) {
+        if (items == null || items.isEmpty()) return "—";
+        return items.stream()
+                .map(a -> a.name().trim())
+                .sorted()
+                .collect(Collectors.joining("\n"));
+    }
+
+    private Component createMultilineCell(String text) {
+        Div div = new Div();
+        div.getStyle()
+                .set("white-space", "pre-line")
+                .set("line-height", "1.4");
+        div.setText(text);
+        return div;
+    }
 }
