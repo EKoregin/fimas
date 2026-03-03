@@ -2,6 +2,7 @@ package ru.korevg.fimas.views.service;
 
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
@@ -12,13 +13,17 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
+import ru.korevg.fimas.dto.port.PortCreateRequest;
+import ru.korevg.fimas.dto.port.PortResponse;
 import ru.korevg.fimas.dto.port.PortShortResponse;
 import ru.korevg.fimas.dto.service.ServiceCreateRequest;
 import ru.korevg.fimas.dto.service.ServiceResponse;
 import ru.korevg.fimas.dto.service.ServiceUpdateRequest;
+import ru.korevg.fimas.entity.Protocol;
 import ru.korevg.fimas.service.PortService;
 import ru.korevg.fimas.service.ServiceService;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -106,7 +111,7 @@ public class ServiceForm extends VerticalLayout {
         portDialog.setHeight("500px");
 
         Grid<PortShortResponse> allPortsGrid = new Grid<>(PortShortResponse.class, false);
-        allPortsGrid.setItems(portService.findAllShort());
+        allPortsGrid.setItems(portService.findAllShort());  // начальная загрузка
 
         allPortsGrid.addColumn(PortShortResponse::getProtocol).setHeader("Протокол");
         allPortsGrid.addColumn(PortShortResponse::getSrcPort).setHeader("Исх. порт");
@@ -114,6 +119,10 @@ public class ServiceForm extends VerticalLayout {
 
         allPortsGrid.setSelectionMode(Grid.SelectionMode.MULTI);
         allPortsGrid.asMultiSelect().setValue(selectedPorts);
+
+        // Кнопка создания нового порта
+        Button createNewPortBtn = new Button("Создать новый порт", e -> openCreatePortDialog(portDialog, allPortsGrid));
+        createNewPortBtn.addThemeVariants(ButtonVariant.LUMO_SUCCESS);
 
         Button confirmBtn = new Button("Добавить выбранные", e -> {
             selectedPorts.clear();
@@ -125,8 +134,9 @@ public class ServiceForm extends VerticalLayout {
 
         Button cancelBtn = new Button("Отмена", e -> portDialog.close());
 
-        HorizontalLayout buttons = new HorizontalLayout(confirmBtn, cancelBtn);
-        buttons.setJustifyContentMode(JustifyContentMode.END);
+        HorizontalLayout buttons = new HorizontalLayout(createNewPortBtn, confirmBtn, cancelBtn);
+        buttons.setJustifyContentMode(JustifyContentMode.BETWEEN);  // распределить по краям
+        buttons.setWidthFull();
 
         VerticalLayout content = new VerticalLayout(allPortsGrid, buttons);
         content.setSizeFull();
@@ -134,6 +144,119 @@ public class ServiceForm extends VerticalLayout {
         portDialog.add(content);
         portDialog.open();
     }
+
+    // Создание нового порта
+    private void openCreatePortDialog(Dialog parentDialog, Grid<PortShortResponse> allPortsGrid) {
+        Dialog createDialog = new Dialog();
+        createDialog.setHeaderTitle("Создание нового порта");
+        createDialog.setWidth("500px");
+
+        ComboBox<String> protocolField = new ComboBox<>("Протокол");
+        protocolField.setItems("TCP", "UDP", "ICMP", "GRE", "ESP");  // или динамически из сервиса/констант
+//        protocolField.setItems(Arrays.toString(Protocol.values()));
+        protocolField.setRequiredIndicatorVisible(true);
+
+        TextField srcPortField = new TextField("Исходный порт (от)");
+        srcPortField.setRequiredIndicatorVisible(true);
+        srcPortField.setPattern("\\d+");
+        srcPortField.setHelperText("0-65535");
+
+        TextField dstPortField = new TextField("Порт назначения (до)");
+        dstPortField.setRequiredIndicatorVisible(true);
+        dstPortField.setPattern("\\d+");
+        dstPortField.setHelperText("0-65535 или пусто для любого");
+
+        VerticalLayout form = new VerticalLayout(protocolField, srcPortField, dstPortField);
+        form.setPadding(true);
+
+        Button savePortBtn = new Button("Сохранить порт", e -> {
+            if (protocolField.isEmpty() || srcPortField.isEmpty()) {
+                Notification.show("Заполните обязательные поля", 3000, Notification.Position.MIDDLE)
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                return;
+            }
+
+            try {
+                // Создаём запрос (адаптируйте под ваш PortCreateRequest)
+                // Предполагаем, что у вас есть метод portService.create(...)
+                PortCreateRequest request = new PortCreateRequest(
+                        protocolField.getValue(),
+                        srcPortField.getValue(),
+                        dstPortField.isEmpty() ? null : dstPortField.getValue()
+                );
+
+                PortResponse newPort = portService.create(request);  // должен возвращать созданный объект
+                PortShortResponse portShortResponse = new PortShortResponse(newPort.id(), newPort.protocol().name(), newPort.srcPort(), newPort.dstPort());
+
+                // Обновляем список в гриде выбора
+                allPortsGrid.setItems(portService.findAllShort());
+
+                // Автоматически выбираем новый порт
+                selectedPorts.add(portShortResponse);
+                allPortsGrid.asMultiSelect().select(portShortResponse);
+
+                Notification.show("Порт создан и добавлен", 3000, Notification.Position.TOP_CENTER)
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+
+                createDialog.close();
+
+            } catch (NumberFormatException ex) {
+                Notification.show("Порты должны быть числами", 5000, Notification.Position.MIDDLE)
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            } catch (Exception ex) {
+                Notification.show("Ошибка: " + ex.getMessage(), 5000, Notification.Position.MIDDLE)
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        });
+        savePortBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+
+        Button cancelPortBtn = new Button("Отмена", e -> createDialog.close());
+
+        HorizontalLayout portButtons = new HorizontalLayout(savePortBtn, cancelPortBtn);
+        portButtons.setJustifyContentMode(JustifyContentMode.END);
+
+        VerticalLayout createContent = new VerticalLayout(form, portButtons);
+        createContent.setSizeFull();
+
+        createDialog.add(createContent);
+        createDialog.open();
+    }
+
+//    private void openPortSelectionDialog() {
+//        Dialog portDialog = new Dialog();
+//        portDialog.setHeaderTitle("Выбор портов");
+//        portDialog.setWidth("700px");
+//        portDialog.setHeight("500px");
+//
+//        Grid<PortShortResponse> allPortsGrid = new Grid<>(PortShortResponse.class, false);
+//        allPortsGrid.setItems(portService.findAllShort());
+//
+//        allPortsGrid.addColumn(PortShortResponse::getProtocol).setHeader("Протокол");
+//        allPortsGrid.addColumn(PortShortResponse::getSrcPort).setHeader("Исх. порт");
+//        allPortsGrid.addColumn(PortShortResponse::getDstPort).setHeader("Порт назн.");
+//
+//        allPortsGrid.setSelectionMode(Grid.SelectionMode.MULTI);
+//        allPortsGrid.asMultiSelect().setValue(selectedPorts);
+//
+//        Button confirmBtn = new Button("Добавить выбранные", e -> {
+//            selectedPorts.clear();
+//            selectedPorts.addAll(allPortsGrid.getSelectedItems());
+//            refreshSelectedPortsGrid();
+//            portDialog.close();
+//        });
+//        confirmBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+//
+//        Button cancelBtn = new Button("Отмена", e -> portDialog.close());
+//
+//        HorizontalLayout buttons = new HorizontalLayout(confirmBtn, cancelBtn);
+//        buttons.setJustifyContentMode(JustifyContentMode.END);
+//
+//        VerticalLayout content = new VerticalLayout(allPortsGrid, buttons);
+//        content.setSizeFull();
+//
+//        portDialog.add(content);
+//        portDialog.open();
+//    }
 
     private void refreshSelectedPortsGrid() {
         selectedPortsGrid.setItems(selectedPorts);
