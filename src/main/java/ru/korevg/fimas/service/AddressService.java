@@ -24,4 +24,6 @@ public interface AddressService {
     long count(String search);
 
     List<AddressShortResponse> findAllShort();
+
+    List<AddressShortResponse> findAllShort(Long firewallId);
 }

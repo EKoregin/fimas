@@ -147,4 +147,9 @@ public class AddressServiceImpl implements AddressService {
     public List<AddressShortResponse> findAllShort() {
         return addressRepository.findAllShort();
     }
+
+    @Override
+    public List<AddressShortResponse> findAllShort(Long firewallId) {
+        return addressRepository.findAllShort(firewallId);
+    }
 }

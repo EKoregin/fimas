@@ -82,10 +82,10 @@ public class PolicyForm extends Dialog {
         svcCombo.setWidthFull();
 
         // Загружаем списки
-        srcCombo.setItems(addressService.findAllShort());
+        srcCombo.setItems(addressService.findAllShort(firewallId));
         srcCombo.setItemLabelGenerator(AddressShortResponse::name);
 
-        dstCombo.setItems(addressService.findAllShort());
+        dstCombo.setItems(addressService.findAllShort(firewallId));
         dstCombo.setItemLabelGenerator(AddressShortResponse::name);
 
         svcCombo.setItems(serviceService.findAllShort());

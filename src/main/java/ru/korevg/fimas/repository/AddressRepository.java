@@ -44,4 +44,17 @@ public interface AddressRepository extends JpaRepository<Address, Long> {
 
     @Query("SELECT new ru.korevg.fimas.dto.address.AddressShortResponse(a.id, a.name) FROM Address a")
     List<AddressShortResponse> findAllShort();
+
+    @Query(value = """
+    SELECT a.id, a.name FROM address a
+    WHERE a.address_type = 'COMMON'
+    
+    UNION
+    
+    SELECT a.id, a.name FROM address a
+    JOIN dynamic_address da ON a.id = da.id
+    WHERE a.address_type = 'DYNAMIC'
+      AND da.firewall_id = :firewallId
+    """, nativeQuery = true)
+    List<AddressShortResponse> findAllShort(@Param("firewallId") Long firewallId);
 }
