@@ -2,7 +2,6 @@ package ru.korevg.fimas.views.service;
 
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
-import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
@@ -13,18 +12,13 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
-import com.vaadin.flow.data.binder.BeanValidationBinder;
-import com.vaadin.flow.data.binder.BinderValidationStatus;
-import ru.korevg.fimas.dto.port.PortCreateRequest;
-import ru.korevg.fimas.dto.port.PortResponse;
 import ru.korevg.fimas.dto.port.PortShortResponse;
 import ru.korevg.fimas.dto.service.ServiceCreateRequest;
 import ru.korevg.fimas.dto.service.ServiceResponse;
 import ru.korevg.fimas.dto.service.ServiceUpdateRequest;
-import ru.korevg.fimas.entity.Protocol;
 import ru.korevg.fimas.service.PortService;
 import ru.korevg.fimas.service.ServiceService;
-import ru.korevg.fimas.validation.PortInputUtil;
+import ru.korevg.fimas.views.port.PortForm;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -150,153 +144,55 @@ public class ServiceForm extends VerticalLayout {
     }
 
     private void openCreatePortDialog(Dialog parentDialog, Grid<PortShortResponse> allPortsGrid) {
-        Dialog dialog = new Dialog();
-        dialog.setHeaderTitle("Создание нового порта");
-        dialog.setWidth("540px");
-        dialog.setResizable(true);
+        PortForm portForm = new PortForm(portService);
+        portForm.initAsSubForm();  // очищает поля, устанавливает currentPort = null
 
-        BeanValidationBinder<PortCreateRequest> binder = new BeanValidationBinder<>(PortCreateRequest.class);
-
-        // Поля формы
-        ComboBox<Protocol> protocolField = createProtocolField();
-        TextField srcPortField = createSrcPortField();
-        TextField dstPortField = createDstPortField();
-
-        // Привязки к binder
-        configureBindings(binder, protocolField, srcPortField, dstPortField);
-
-        VerticalLayout form = new VerticalLayout(protocolField, srcPortField, dstPortField);
-        form.setPadding(true);
-        form.setSpacing(true);
+        Dialog createDialog = new Dialog();
+        createDialog.setHeaderTitle("Создание нового порта");
+        createDialog.setWidth("540px");
+        createDialog.setResizable(true);
 
         Button saveButton = new Button("Создать и добавить", event -> {
-            BinderValidationStatus<PortCreateRequest> status = binder.validate();
+            portForm.save();  // ← используем save() из PortForm
 
-            if (!status.isOk()) {
-                showValidationErrors(status);
-                return;
-            }
-
-            PortCreateRequest request = buildRequestFromFields(protocolField, srcPortField, dstPortField);
-
-            try {
-                PortResponse created = portService.create(request);
-                PortShortResponse newItem = mapToShortResponse(created);
-
-                // Добавляем в выбранные
-                selectedPorts.add(newItem);
-
-                // Обновляем список в гриде без дубликатов
-                updateGridItems(allPortsGrid, newItem);
-
-                // Восстанавливаем / устанавливаем выделение после обновления списка
-                allPortsGrid.asMultiSelect().select(selectedPorts);
-
-                Notification.show("Порт успешно создан и добавлен", 3000, Notification.Position.TOP_CENTER)
-                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-
-                dialog.close();
-
-            } catch (Exception e) {
-                Notification.show("Не удалось создать порт: " + e.getMessage(), 5000, Notification.Position.MIDDLE)
-                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
-            }
+            // После сохранения (если success) — коллбэк уже добавит в selectedPorts и обновит грид
+            // Если нужно, добавьте проверку, но Notification уже внутри save()
         });
 
         saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
-        Button cancelButton = new Button("Отмена", e -> dialog.close());
+        Button cancelButton = new Button("Отмена", e -> createDialog.close());
         cancelButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
 
         HorizontalLayout buttons = new HorizontalLayout(saveButton, cancelButton);
         buttons.setJustifyContentMode(JustifyContentMode.END);
         buttons.setWidthFull();
 
-        VerticalLayout content = new VerticalLayout(form, buttons);
+        VerticalLayout content = new VerticalLayout(portForm, buttons);
         content.setSizeFull();
         content.setPadding(true);
 
-        dialog.add(content);
-        dialog.open();
-    }
+        createDialog.add(content);
+        createDialog.open();
 
-// ──────────────────────────────────────────────────────────────────────────────
-// Вспомогательные методы (для лучшей читаемости и поддержки кода)
-// ──────────────────────────────────────────────────────────────────────────────
+        // Устанавливаем коллбэк для добавления в грид после создания
+        portForm.onPortCreatedOrUpdated =
+                newPort -> {
+                    PortShortResponse portShortResponse =
+                            new PortShortResponse(newPort.id(),
+                                    newPort.protocol().name(),
+                                    newPort.srcPort(),
+                                    newPort.dstPort());
+                    selectedPorts.add(portShortResponse);
+                    updateGridItems(allPortsGrid, portShortResponse);
+                    allPortsGrid.asMultiSelect().select(selectedPorts);
+                    Notification.show("Порт успешно создан и добавлен", 3000, Notification.Position.TOP_CENTER)
+                            .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                    createDialog.close();
+                };
 
-    private ComboBox<Protocol> createProtocolField() {
-        ComboBox<Protocol> field = new ComboBox<>("Протокол");
-        field.setItems(Protocol.values());
-        field.setItemLabelGenerator(Protocol::name);
-        field.setAllowCustomValue(false);
-        field.setRequiredIndicatorVisible(true);
-        field.setHelperText("Обязательно");
-        return field;
-    }
 
-    private TextField createSrcPortField() {
-        TextField field = new TextField("Исходный порт (от)");
-        field.setHelperText("0–65535 или диапазон 1024–5000 (можно оставить пустым → любой)");
-        field.setAllowedCharPattern("[\\d-]");
-        return field;
-    }
-
-    private TextField createDstPortField() {
-        TextField field = new TextField("Порт назначения (до)");
-        field.setRequiredIndicatorVisible(true);
-        field.setHelperText("0–65535 или диапазон 80–443 (обязательно)");
-        field.setAllowedCharPattern("[\\d-]");
-        return field;
-    }
-
-    private void configureBindings(BeanValidationBinder<PortCreateRequest> binder,
-                                   ComboBox<Protocol> protocolField,
-                                   TextField srcPortField,
-                                   TextField dstPortField) {
-
-        binder.forField(protocolField)
-                .asRequired("Протокол обязателен")
-                .withConverter(Protocol::name, Protocol::valueOf)
-                .bind(PortCreateRequest::protocol, null);
-
-        binder.forField(srcPortField)
-                .withNullRepresentation("")
-                .withValidator(PortInputUtil::isValidPortInput, "Неверный формат порта или диапазона")
-                .bind(PortCreateRequest::srcPort, null);
-
-        binder.forField(dstPortField)
-                .asRequired("Порт назначения обязателен")
-                .withNullRepresentation("")
-                .withValidator(PortInputUtil::isValidPortInput, "Неверный формат порта или диапазона")
-                .bind(PortCreateRequest::dstPort, null);
-    }
-
-    private void showValidationErrors(BinderValidationStatus<PortCreateRequest> status) {
-        String message = status.getFieldValidationErrors().stream()
-                .map(err -> err.getMessage().orElse("Ошибка"))
-                .collect(Collectors.joining("\n• ", "• ", ""));
-
-        Notification.show("Исправьте ошибки в форме:\n" + message, 6000, Notification.Position.MIDDLE)
-                .addThemeVariants(NotificationVariant.LUMO_ERROR);
-    }
-
-    private PortCreateRequest buildRequestFromFields(ComboBox<Protocol> protocolField,
-                                                     TextField srcPortField,
-                                                     TextField dstPortField) {
-        String protocol = protocolField.getValue().name();
-        String src = srcPortField.isEmpty() ? null : srcPortField.getValue().trim();
-        String dst = dstPortField.getValue().trim();
-
-        return new PortCreateRequest(protocol, src, dst);
-    }
-
-    private PortShortResponse mapToShortResponse(PortResponse response) {
-        return new PortShortResponse(
-                response.id(),
-                response.protocol().name(),
-                response.srcPort(),
-                response.dstPort()
-        );
+        portForm.onCancel = createDialog::close;  // если нужно
     }
 
     private void updateGridItems(Grid<PortShortResponse> grid, PortShortResponse newItem) {
