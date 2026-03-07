@@ -10,5 +10,7 @@ public record FirewallUpdateRequest(
         @Size(max = 500, message = "Описание не может превышать 500 символов")
         String description,
 
-        Long modelId   // можно обновлять модель, если нужно
+        Long modelId,
+
+        String mgmtIpAddress
 ) {}

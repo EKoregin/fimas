@@ -14,5 +14,8 @@ public record FirewallCreateRequest(
         String description,
 
         @NotNull(message = "ID модели обязателен")
-        Long modelId
+        Long modelId,
+
+        @NotNull(message = "IP управления обязателен")
+        String mgmtIpAddress
 ) {}

@@ -5,6 +5,7 @@ public record FirewallResponse(
         String name,
         String description,
         Long modelId,
+        String mgmtIpAddress,
         String modelName,
         String vendorName
 ) {}

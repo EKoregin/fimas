@@ -10,6 +10,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -41,6 +43,14 @@ public class Firewall {
     @ManyToOne
     @JoinColumn(name = "model_id", nullable = false)
     private Model model;
+
+    @Column(name = "mgmt_ip_address", length = 15, nullable = false)
+    @NotBlank(message = "IP-адрес обязателен")
+    @Pattern(
+            regexp = "^((25[0-5]|(2[0-4]|1\\d|[1-9]|)\\d)\\.){3}(25[0-5]|(2[0-4]|1\\d|[1-9]|)\\d)$",
+            message = "Некорректный формат IPv4-адреса (ожидается: 0-255.0-255.0-255.0-255 без ведущих нулей в октетах)"
+    )
+    private String mgmtIpAddress;
 
     @OneToMany(mappedBy = "firewall", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default

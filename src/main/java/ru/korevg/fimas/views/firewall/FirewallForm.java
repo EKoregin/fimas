@@ -27,6 +27,7 @@ public class FirewallForm extends VerticalLayout {
     private final TextField nameField = new TextField("Имя");
     private final TextArea descriptionField = new TextArea("Описание");
     private final ComboBox<ModelResponse> modelCombo = new ComboBox<>("Модель");
+    private final TextArea mgmtIpAddress = new TextArea("Mgmt IP Address");
 
     private FirewallResponse editing = null;
     private Runnable afterSaveCallback;
@@ -53,7 +54,12 @@ public class FirewallForm extends VerticalLayout {
         modelCombo.setRequired(true);
         modelCombo.setWidthFull();
 
-        FormLayout form = new FormLayout(nameField, descriptionField, modelCombo);
+        mgmtIpAddress.setRequired(true);
+        mgmtIpAddress.setWidthFull();
+        mgmtIpAddress.setMaxLength(15);
+        mgmtIpAddress.setPlaceholder("10.10.10.10");
+
+        FormLayout form = new FormLayout(nameField, descriptionField, modelCombo, mgmtIpAddress);
         form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1));
 
         Button saveBtn = new Button("Сохранить", e -> save());
@@ -103,6 +109,8 @@ public class FirewallForm extends VerticalLayout {
         } else {
             modelCombo.clear();
         }
+
+        mgmtIpAddress.setValue(r.mgmtIpAddress() != null ? r.mgmtIpAddress() : "");
     }
 
     private void save() {
@@ -117,7 +125,8 @@ public class FirewallForm extends VerticalLayout {
                 FirewallCreateRequest req = new FirewallCreateRequest(
                         nameField.getValue(),
                         descriptionField.getValue(),
-                        modelCombo.getValue().id()
+                        modelCombo.getValue().id(),
+                        mgmtIpAddress.getValue()
                 );
                 firewallService.create(req);
             } else {
@@ -125,7 +134,8 @@ public class FirewallForm extends VerticalLayout {
                 FirewallUpdateRequest req = new FirewallUpdateRequest(
                         nameField.getValue(),
                         descriptionField.getValue(),
-                        modelCombo.getValue().id()
+                        modelCombo.getValue().id(),
+                        mgmtIpAddress.getValue()
                 );
                 firewallService.update(editing.id(), req);
             }
