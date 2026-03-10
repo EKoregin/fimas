@@ -26,6 +26,8 @@ import java.util.stream.Collectors;
 
 public class AddressForm {
 
+    private static final String DISPLAY_STATIC = "STATIC";
+
     private final AddressService addressService;
     private final FirewallService firewallService;
 
@@ -64,6 +66,7 @@ public class AddressForm {
         addressesText.setPlaceholder("192.168.1.10\n10.0.0.0/24\n...");
 
         type.setItems("COMMON", "DYNAMIC");
+        type.setItemLabelGenerator(value -> "COMMON".equals(value) ? DISPLAY_STATIC : value);
         type.setValue("COMMON");
         type.addValueChangeListener(e -> {
             boolean dyn = "DYNAMIC".equals(e.getValue());
