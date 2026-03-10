@@ -34,8 +34,8 @@ public class PortForm extends VerticalLayout {
     private BeanValidationBinder<PortCreateRequest> createBinder;
     private BeanValidationBinder<PortUpdateRequest> updateBinder;
 
-    private PortResponse currentPort;           // для режима редактирования
-    private Dialog dialog;                      // если форма открыта в диалоге
+    private PortResponse currentPort;
+    private Dialog dialog;
 
     // Коллбэки
     public Consumer<PortResponse> onPortCreatedOrUpdated;
@@ -51,12 +51,23 @@ public class PortForm extends VerticalLayout {
         configureFields();
         configureValidation();
 
+        protocolField.addValueChangeListener(ev -> {
+            boolean icmp = ev.getValue() == Protocol.ICMP;
+            srcPortField.setEnabled(!icmp);
+            dstPortField.setEnabled(!icmp);
+
+            if (icmp) {
+                srcPortField.clear();
+                dstPortField.clear();
+            }
+        });
+
+
         add(
                 new H3("Порт"),
                 protocolField,
                 srcPortField,
                 dstPortField
-//                createButtonsLayout()
         );
     }
 
@@ -256,6 +267,10 @@ public class PortForm extends VerticalLayout {
         protocolField.setValue(p.protocol());
         srcPortField.setValue(p.srcPort() != null ? p.srcPort() : "");
         dstPortField.setValue(p.dstPort() != null ? p.dstPort() : "");
+
+        boolean icmp = p.protocol() == Protocol.ICMP;
+        srcPortField.setEnabled(!icmp);
+        dstPortField.setEnabled(!icmp);
     }
 
     // Геттеры, если понадобится доступ извне (например, для тестов)
