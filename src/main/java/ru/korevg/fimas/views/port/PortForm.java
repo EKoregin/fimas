@@ -74,8 +74,8 @@ public class PortForm extends VerticalLayout {
         srcPortField.setWidthFull();
 
         // Порт назначения
-        dstPortField.setRequiredIndicatorVisible(true);
-        dstPortField.setHelperText("0–65535 или диапазон 80–443 (обязательно)");
+        //dstPortField.setRequiredIndicatorVisible(true);
+        dstPortField.setHelperText("0–65535 или диапазон 80–443 (можно оставить пустым → любой)");
         dstPortField.setAllowedCharPattern("[\\d-]");
         dstPortField.setWidthFull();
     }
@@ -95,7 +95,7 @@ public class PortForm extends VerticalLayout {
                 .bind(PortCreateRequest::srcPort, null);
 
         createBinder.forField(dstPortField)
-                .asRequired("Порт назначения обязателен")
+                //.asRequired("Порт назначения обязателен")
                 .withNullRepresentation("")
                 .withValidator(PortInputUtil::isValidPortInput, "Неверный формат порта или диапазона")
                 .bind(PortCreateRequest::dstPort, null);
