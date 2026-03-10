@@ -253,7 +253,7 @@ public class PolicyListView extends VerticalLayout {
 
     // Вспомогательный метод для красивого вывода множеств
     private String formatSet(Set<? extends RecordWithName> items) {
-        if (items == null || items.isEmpty()) return "—";
+        if (items == null || items.isEmpty()) return "any";
         return items.stream()
                 .map(a -> a.name().trim())
                 .sorted()
