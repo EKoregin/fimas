@@ -1,5 +1,5 @@
 package ru.korevg.fimas.entity;
 
 public enum Protocol {
-    TCP, UDP, ICMP
+    TCP, UDP, ICMP, IP
 }
