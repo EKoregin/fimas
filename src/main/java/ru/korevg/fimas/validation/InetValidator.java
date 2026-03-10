@@ -1,15 +1,21 @@
 package ru.korevg.fimas.validation;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import ru.korevg.fimas.entity.AddressSubType;
 
 import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.HashSet;
+import java.util.Locale;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
  * Сервис для валидации IP-адресов и CIDR-префиксов (IPv4 и IPv6).
  */
+@Slf4j
 @Service
 public class InetValidator {
 
@@ -29,6 +35,17 @@ public class InetValidator {
                     "^([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}(?:/\\d{1,3})?$|" +
                     "^[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})(?:/\\d{1,3})?$|" +
                     "^::([0-9a-fA-F]{1,4}:){0,6}[0-9a-fA-F]{0,4}(?:/\\d{1,3})?$"
+    );
+
+    private static final Pattern STRICT_FQDN_PATTERN = Pattern.compile(
+            // lookahead на общую длину + структура лейблов
+            "^(?=.{1,253}$)" +                          // общая длина 1–253
+                    "(?:" +                                      // один или более лейблов
+                    "(?!-)[a-z0-9-]{1,63}(?<!-)" +             // лейбл: не начинается/не заканчивается на -
+                    "\\." +                                    // точка
+                    ")+" +                                       // один или более
+                    "[a-z]{2,63}$",                              // TLD: минимум 2 буквы
+            Pattern.CASE_INSENSITIVE
     );
 
     /**
@@ -99,6 +116,74 @@ public class InetValidator {
                     "Некорректный формат IP-адреса или подсети: '" + value + "'. " +
                             "Ожидается IPv4 (например 192.168.1.1), IPv6 или CIDR (например 10.0.0.0/16, 2001:db8::/32)"
             );
+        }
+    }
+
+    public boolean isValidFqdn(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return false;
+        }
+
+        String normalized = value.trim().toLowerCase(Locale.ROOT);
+
+        // Проверка через regex
+        if (!STRICT_FQDN_PATTERN.matcher(normalized).matches()) {
+            return false;
+        }
+
+        // Дополнительно: проверка, что нет пустых лейблов и корректная структура
+        String[] labels = normalized.split("\\.");
+        if (labels.length < 2) {
+            return false;
+        }
+
+        for (String label : labels) {
+            if (label.isEmpty() || label.length() > 63) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public void validateAddresses(Set<String> addresses, AddressSubType subType) {
+        if (addresses == null || addresses.isEmpty()) {
+            throw new IllegalArgumentException("Адреса не могут быть пустыми");
+        }
+
+        if (subType == null) {
+            throw new IllegalArgumentException("subType должен быть указан");
+        }
+
+        Set<String> normalizedAddresses = new HashSet<>();
+        for (String addr : addresses) {
+            if (addr == null) continue;  // Пропускаем null
+            String normalized = addr.trim().toLowerCase(Locale.ROOT);
+            if (!normalized.isEmpty()) {
+                normalizedAddresses.add(normalized);
+            }
+        }
+
+        if (normalizedAddresses.isEmpty()) {
+            throw new IllegalArgumentException("После нормализации адреса пусты");
+        }
+
+        for (String normalized : normalizedAddresses) {
+            switch (subType) {
+                case IP:
+                    validateInetOrThrow(normalized);
+                    break;
+
+                case FQDN:
+                    if (!isValidFqdn(normalized)) {
+                        throw new IllegalArgumentException(
+                                "Некорректный домен для типа FQDN: " + normalized);
+                    }
+                    break;
+
+                default:
+                    throw new IllegalArgumentException("Неизвестный тип адреса: " + subType);
+            }
         }
     }
 }

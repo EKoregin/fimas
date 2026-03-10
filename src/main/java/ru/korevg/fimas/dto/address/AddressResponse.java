@@ -7,6 +7,7 @@ public record AddressResponse(
         String addressType,      // "COMMON" или "DYNAMIC"
         String name,
         String description,
+        String subType,
         Set<String> addresses,
         Long firewallId,         // null для Common
         String firewallName      // null для Common

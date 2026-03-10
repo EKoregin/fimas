@@ -5,6 +5,8 @@ import jakarta.persistence.Column;
 import jakarta.persistence.DiscriminatorColumn;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -14,6 +16,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -24,6 +27,7 @@ import java.util.Set;
 @Table(name = "address")
 @Getter
 @Setter
+@Slf4j
 public abstract class Address {
 
     @Id
@@ -36,12 +40,16 @@ public abstract class Address {
     @Column(length = 500)
     private String description;
 
+    @Column(name = "sub_type", nullable = false, length = 10)
+    @Enumerated(EnumType.STRING)
+    private AddressSubType subType;
+
     @ElementCollection
     @CollectionTable(
             name = "inet_addresses",
             joinColumns = @JoinColumn(name = "address_id")
     )
-    @Column(name = "inet_address", nullable = false, length = 45)
+    @Column(name = "inet_address", nullable = false, length = 512)
     private Set<String> addresses = new HashSet<>();
 
     @Column(name = "address_type", insertable = false, updatable = false)

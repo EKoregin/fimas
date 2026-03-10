@@ -11,17 +11,15 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.radiobutton.RadioButtonGroup;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
-import com.vaadin.flow.data.binder.Binder;
 import ru.korevg.fimas.dto.address.AddressCommonCreateRequest;
 import ru.korevg.fimas.dto.address.AddressDynamicCreateRequest;
 import ru.korevg.fimas.dto.address.AddressResponse;
-import ru.korevg.fimas.dto.firewall.FirewallResponse;   // ← ваш DTO
+import ru.korevg.fimas.dto.firewall.FirewallResponse;
 import ru.korevg.fimas.service.AddressService;
 import ru.korevg.fimas.service.FirewallService;
 
 import java.util.Arrays;
 import java.util.Set;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class AddressForm {
@@ -37,7 +35,8 @@ public class AddressForm {
     private final TextField name = new TextField("Имя");
     private final TextArea description = new TextArea("Описание");
     private final TextArea addressesText = new TextArea("Адреса (по одному на строку)");
-    private final RadioButtonGroup<String> type = new RadioButtonGroup<>("Тип адреса");
+    private final RadioButtonGroup<String> type = new RadioButtonGroup<>("Динамический - для складов свои");
+    private final RadioButtonGroup<String> subType = new RadioButtonGroup<>("Тип адреса");
     private final com.vaadin.flow.component.combobox.ComboBox<FirewallResponse> firewallCombo =
             new com.vaadin.flow.component.combobox.ComboBox<>("Firewall");
 
@@ -74,12 +73,15 @@ public class AddressForm {
             firewallCombo.setRequiredIndicatorVisible(dyn);
         });
 
+        subType.setItems("IP", "FQDN");
+        subType.setValue("IP");
+
         firewallCombo.setItems(firewallService.findAll());
         firewallCombo.setItemLabelGenerator(FirewallResponse::name);
         firewallCombo.setWidthFull();
         firewallCombo.setVisible(false);
 
-        form.add(name, description, addressesText, type, firewallCombo);
+        form.add(name, description, addressesText, type, firewallCombo, subType);
         form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1));
 
         Button save = new Button("Создать", e -> save());
@@ -117,6 +119,9 @@ public class AddressForm {
         type.setValue(response.addressType());
         type.setReadOnly(true);                     // тип менять нельзя при редактировании
 
+        subType.setValue(response.subType());
+        subType.setReadOnly(true);
+
         dialog.setHeaderTitle("Редактирование адреса");
         ((Button) ((HorizontalLayout) ((VerticalLayout) dialog.getChildren().findFirst().get())
                 .getComponentAt(1)).getComponentAt(0)).setText("Сохранить");
@@ -129,6 +134,7 @@ public class AddressForm {
         addressesText.clear();
         firewallCombo.clear();
         type.setValue("COMMON");
+        subType.setValue("IP");
     }
 
     private void fill(AddressResponse r) {
@@ -157,28 +163,41 @@ public class AddressForm {
                 .collect(Collectors.toSet());
 
         try {
+            var commonAddressRequest = AddressCommonCreateRequest.builder()
+                    .name(name.getValue())
+                    .description(description.getValue())
+                    .subType(subType.getValue())
+                    .addresses(addrSet)
+                    .build();
+
+            var dynamicAddressRequest = AddressDynamicCreateRequest.builder()
+                    .name(name.getValue())
+                    .description(description.getValue())
+                    .subType(subType.getValue())
+                    .addresses(addrSet)
+                    .build();
+
             if (editing == null) { // CREATE
                 String t = type.getValue();
                 if ("COMMON".equals(t)) {
-                    addressService.createCommon(new AddressCommonCreateRequest(
-                            name.getValue(), description.getValue(), addrSet));
+                    addressService.createCommon(commonAddressRequest);
                 } else {
-                    Long fwId = firewallCombo.getValue() != null ? firewallCombo.getValue().id() : null;
-                    addressService.createDynamic(new AddressDynamicCreateRequest(
-                            name.getValue(), description.getValue(), addrSet, fwId));
+                    Long fwId = firewallCombo.getValue() != null
+                            ? firewallCombo.getValue().id() : null;
+                    dynamicAddressRequest.setFirewallId(fwId);
+                    addressService.createDynamic(dynamicAddressRequest);
                 }
             } else { // UPDATE
                 String t = editing.addressType();
                 if ("COMMON".equals(t)) {
-                    addressService.updateCommon(editing.id(), new AddressCommonCreateRequest(
-                            name.getValue(), description.getValue(), addrSet));
+                    addressService.updateCommon(editing.id(), commonAddressRequest);
                 } else {
                     Long fwId = firewallCombo.getValue() != null
                             ? firewallCombo.getValue().id()
                             : editing.firewallId();
 
-                    addressService.updateDynamic(editing.id(), new AddressDynamicCreateRequest(
-                            name.getValue(), description.getValue(), addrSet, fwId));
+                    dynamicAddressRequest.setFirewallId(fwId);
+                    addressService.updateDynamic(editing.id(), dynamicAddressRequest);
                 }
             }
 

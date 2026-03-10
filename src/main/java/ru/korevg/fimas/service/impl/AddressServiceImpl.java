@@ -20,6 +20,7 @@ import ru.korevg.fimas.mapper.AddressMapper;
 import ru.korevg.fimas.repository.AddressRepository;
 import ru.korevg.fimas.repository.FirewallRepository;
 import ru.korevg.fimas.service.AddressService;
+import ru.korevg.fimas.validation.InetValidator;
 
 import java.util.List;
 
@@ -29,6 +30,8 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class AddressServiceImpl implements AddressService {
 
+    private static final InetValidator validator = new InetValidator();
+
     private final AddressRepository addressRepository;
     private final FirewallRepository firewallRepository;
     private final AddressMapper addressMapper;
@@ -36,12 +39,14 @@ public class AddressServiceImpl implements AddressService {
     @Override
     @Transactional
     public AddressResponse createCommon(AddressCommonCreateRequest request) {
-        if (addressRepository.existsByName(request.name())) {
-            throw new EntityExistsException("Адрес с именем '" + request.name() + "' уже существует");
+        if (addressRepository.existsByName(request.getName())) {
+            throw new EntityExistsException("Адрес с именем '" + request.getName() + "' уже существует");
         }
 
         CommonAddress address = addressMapper.toCommonEntity(request);
-        address.setAddresses(request.addresses());
+        address.setAddresses(request.getAddresses());
+
+        validator.validateAddresses(address.getAddresses(), address.getSubType());
 
         Address saved = addressRepository.save(address);
         return addressMapper.toResponse(saved);
@@ -50,16 +55,18 @@ public class AddressServiceImpl implements AddressService {
     @Override
     @Transactional
     public AddressResponse createDynamic(AddressDynamicCreateRequest request) {
-        if (addressRepository.existsByName(request.name())) {
-            throw new EntityExistsException("Адрес с именем '" + request.name() + "' уже существует");
+        if (addressRepository.existsByName(request.getName())) {
+            throw new EntityExistsException("Адрес с именем '" + request.getName() + "' уже существует");
         }
 
-        Firewall firewall = firewallRepository.findById(request.firewallId())
+        Firewall firewall = firewallRepository.findById(request.getFirewallId())
                 .orElseThrow(() -> new EntityNotFoundException("Firewall не найден"));
 
         DynamicAddress address = addressMapper.toDynamicEntity(request);
-        address.setAddresses(request.addresses());
+        address.setAddresses(request.getAddresses());
         address.setFirewall(firewall);
+
+        validator.validateAddresses(address.getAddresses(), address.getSubType());
 
         Address saved = addressRepository.save(address);
         return addressMapper.toResponse(saved);
@@ -74,6 +81,7 @@ public class AddressServiceImpl implements AddressService {
         addressMapper.updateCommonFromRequest(request, (CommonAddress) address);
         address.setAddresses(address.getAddresses());
 
+        validator.validateAddresses(address.getAddresses(), address.getSubType());
 
         Address updated = addressRepository.save(address);
         return addressMapper.toResponse(updated);
@@ -86,8 +94,8 @@ public class AddressServiceImpl implements AddressService {
                 .orElseThrow(() -> new EntityNotFoundException("Адрес не найден"));
 
         addressMapper.updateDynamicFromRequest(request, (DynamicAddress) address);
-        address.setAddresses(address.getAddresses());
 
+        validator.validateAddresses(address.getAddresses(), address.getSubType());
 
         Address updated = addressRepository.save(address);
         return addressMapper.toResponse(updated);

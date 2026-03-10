@@ -3,13 +3,29 @@ package ru.korevg.fimas.dto.address;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.Setter;
+
 import java.util.Set;
 
-public record AddressDynamicCreateRequest(
+@Getter
+@Setter
+@Builder
+public class AddressDynamicCreateRequest {
 
-        @NotBlank @Size(max = 100) String name,
-        @Size(max = 500) String description,
-        Set<String> addresses,
+        @NotBlank
+        @Size(max = 100)
+        String name;
 
-        @NotNull Long firewallId
-) {}
+        @Size(max = 500)
+        String description;
+
+        @Size(max = 10)
+        String subType;
+
+        Set<String> addresses;
+
+        @NotNull
+        Long firewallId;
+}
