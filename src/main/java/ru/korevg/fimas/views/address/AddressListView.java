@@ -111,6 +111,12 @@ public class AddressListView extends VerticalLayout {
                 .setWidth("130px")
                 .setFlexGrow(0);
 
+        grid.addColumn(AddressResponse::subType)
+                .setHeader("T")
+                .setSortable(true)
+                .setKey("subType")
+                .setFlexGrow(0);
+
         grid.addColumn(AddressResponse::name)
                 .setHeader("Имя")
                 .setSortable(true)

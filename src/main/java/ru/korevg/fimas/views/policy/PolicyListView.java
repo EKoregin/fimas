@@ -150,7 +150,11 @@ public class PolicyListView extends VerticalLayout {
                 .setAutoWidth(true)
                 .setResizable(true);
 
-        grid.addColumn(PolicyResponse::action).setHeader("Action").setFlexGrow(0);
+        grid.addColumn(PolicyResponse::action)
+                .setHeader("Action")
+                .setSortable(true)
+                .setKey("action")
+                .setFlexGrow(0);
         grid.addColumn(PolicyResponse::status).setHeader("Status").setFlexGrow(0);
 
         grid.addComponentColumn(p -> {
