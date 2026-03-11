@@ -37,14 +37,22 @@ public class InetValidator {
                     "^::([0-9a-fA-F]{1,4}:){0,6}[0-9a-fA-F]{0,4}(?:/\\d{1,3})?$"
     );
 
-    private static final Pattern STRICT_FQDN_PATTERN = Pattern.compile(
-            // lookahead на общую длину + структура лейблов
-            "^(?=.{1,253}$)" +                          // общая длина 1–253
-                    "(?:" +                                      // один или более лейблов
-                    "(?!-)[a-z0-9-]{1,63}(?<!-)" +             // лейбл: не начинается/не заканчивается на -
-                    "\\." +                                    // точка
-                    ")+" +                                       // один или более
-                    "[a-z]{2,63}$",                              // TLD: минимум 2 буквы
+    private static final Pattern STRICT_FQDN_OR_WILDCARD_PATTERN = Pattern.compile(
+            // Общая длина 1–253 символа (включая точки и *)
+            "^(?=.{1,253}$)" +
+
+                    // Опциональный wildcard в самом начале: либо ничего, либо "*."
+                    "(?:\\*\\.)?" +
+
+                    // Один или более лейблов (обычная часть домена)
+                    "(?:" +
+                    "(?!-)[a-z0-9-]{1,63}(?<!-)" +   // лейбл: не начинается и не заканчивается на -
+                    "\\." +                          // точка-разделитель
+                    ")+" +
+
+                    // Финальный TLD (минимум 2 буквы, без цифр и дефисов в начале/конце)
+                    "[a-z]{2,63}$",
+
             Pattern.CASE_INSENSITIVE
     );
 
@@ -126,24 +134,33 @@ public class InetValidator {
 
         String normalized = value.trim().toLowerCase(Locale.ROOT);
 
-        // Проверка через regex
-        if (!STRICT_FQDN_PATTERN.matcher(normalized).matches()) {
+        if (!STRICT_FQDN_OR_WILDCARD_PATTERN.matcher(normalized).matches()) {
             return false;
         }
 
-        // Дополнительно: проверка, что нет пустых лейблов и корректная структура
-        String[] labels = normalized.split("\\.");
-        if (labels.length < 2) {
+        String[] parts = normalized.split("\\.");
+
+        if (parts.length < 2) {
             return false;
         }
 
-        for (String label : labels) {
-            if (label.isEmpty() || label.length() > 63) {
+        for (int i = 0; i < parts.length; i++) {
+            String part = parts[i];
+
+            if (i == 0 && "*".equals(part)) {
+                continue;
+            }
+
+            if (part.isEmpty() || part.length() > 63) {
+                return false;
+            }
+
+            if (part.startsWith("-") || part.endsWith("-")) {
                 return false;
             }
         }
 
-        return true;
+        return !normalized.contains("..") && !normalized.startsWith(".*");
     }
 
     public void validateAddresses(Set<String> addresses, AddressSubType subType) {
