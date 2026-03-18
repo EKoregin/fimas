@@ -138,6 +138,12 @@ public class AddressListView extends VerticalLayout {
             return span;
         }).setHeader("Адреса").setFlexGrow(3).setSortable(false);
 
+        grid.addColumn(resp -> (long) resp.addresses().size())
+                .setHeader("#")
+                .setWidth("40px")
+                .setFlexGrow(0)
+                .setSortable(false);
+
         grid.addColumn(resp -> resp.firewallName() != null ? resp.firewallName() : "—")
                 .setHeader("Firewall")
                 .setSortable(false);
