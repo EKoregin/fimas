@@ -83,25 +83,23 @@
 			<artifactId>lombok</artifactId>
 			<optional>true</optional>
 		</dependency>
-		<!-- Source: https://mvnrepository.com/artifact/com.vaadin/vaadin-spring-boot-starter -->
 		<dependency>
 			<groupId>com.vaadin</groupId>
 			<artifactId>vaadin-spring-boot-starter</artifactId>
 			<version>25.0.6</version>
 			<scope>compile</scope>
 		</dependency>
-		<!-- Source: https://mvnrepository.com/artifact/com.vaadin/vaadin-spring -->
-<!--		<dependency>-->
-<!--			<groupId>com.vaadin</groupId>-->
-<!--			<artifactId>vaadin-spring</artifactId>-->
-<!--			<version>25.0.6</version>-->
-<!--			<scope>compile</scope>-->
-<!--		</dependency>-->
-		<!-- Source: https://mvnrepository.com/artifact/com.vaadin/vaadin-dev -->
 		<dependency>
 			<groupId>com.vaadin</groupId>
 			<artifactId>vaadin-dev</artifactId>
 			<version>25.0.6</version>
+			<scope>compile</scope>
+		</dependency>
+		<!-- Source: https://mvnrepository.com/artifact/com.github.mwiede/jsch -->
+		<dependency>
+			<groupId>com.github.mwiede</groupId>
+			<artifactId>jsch</artifactId>
+			<version>2.27.7</version>
 			<scope>compile</scope>
 		</dependency>
 
