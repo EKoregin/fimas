@@ -14,6 +14,7 @@ import com.vaadin.flow.theme.lumo.LumoUtility;
 import ru.korevg.fimas.views.address.AddressListView;
 import ru.korevg.fimas.views.dashboard.DashboardView;
 import ru.korevg.fimas.views.firewall.FirewallListView;
+import ru.korevg.fimas.views.model.ModelListView;
 import ru.korevg.fimas.views.port.PortListView;
 import ru.korevg.fimas.views.service.ServiceListView;
 
@@ -46,7 +47,8 @@ public class MainLayout extends AppLayout {
 //                createMenuLink("Policies", PolicyListView.class),
                 createMenuLink("Addresses", AddressListView.class),
                 createMenuLink("Services", ServiceListView.class),
-                createMenuLink("Ports", PortListView.class)
+                createMenuLink("Ports", PortListView.class),
+                createMenuLink("Models", ModelListView.class)
 //                createMenuLink("Vendors & Models", VendorListView.class)
         );
 

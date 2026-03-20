@@ -17,5 +17,6 @@ public interface ModelMapper {
     void updateFromRequest(ModelUpdateRequest request, @MappingTarget Model model);
 
     @Mapping(source = "vendor.name", target = "vendorName")
+    @Mapping(source = "vendor.id", target = "vendorId")
     ModelResponse toResponse(Model model);
 }

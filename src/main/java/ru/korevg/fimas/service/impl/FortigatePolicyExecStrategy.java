@@ -2,7 +2,8 @@ package ru.korevg.fimas.service.impl;
 
 import com.jcraft.jsch.*;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.client.RestTemplate; // если будете делать HTTPS
+import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestTemplate;
 import ru.korevg.fimas.entity.Action;
 import ru.korevg.fimas.entity.Command;
 import ru.korevg.fimas.entity.CommandType;
@@ -12,6 +13,7 @@ import java.io.*;
 import java.util.*;
 
 @Slf4j
+@Component
 public class FortigatePolicyExecStrategy implements PolicyExecStrategy {
 
     @Override
@@ -47,6 +49,11 @@ public class FortigatePolicyExecStrategy implements PolicyExecStrategy {
             }
         }
         return results;
+    }
+
+    @Override
+    public String getSupportedKey() {
+        return "fortigate";
     }
 
     /** Выполнение одной SSH-команды (Fortigate CLI) */

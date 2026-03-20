@@ -1,11 +1,16 @@
 package ru.korevg.fimas.dto.model;
 
 import jakarta.validation.constraints.Size;
+import lombok.*;
 
-public record ModelUpdateRequest(
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class ModelUpdateRequest {
 
         @Size(min = 1, max = 100, message = "Название от 1 до 100 символов")
-        String name,
+        private String name;
 
-        Long vendorId
-) {}
+        private Long vendorId;
+}

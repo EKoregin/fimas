@@ -15,7 +15,9 @@ import ru.korevg.fimas.entity.Command;
 import ru.korevg.fimas.mapper.ActionCommandMapper;
 import ru.korevg.fimas.repository.ActionRepository;
 import ru.korevg.fimas.repository.CommandRepository;
+import ru.korevg.fimas.repository.ModelRepository;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -26,6 +28,7 @@ public class ActionCommandService {
 
     private final ActionRepository actionRepository;
     private final CommandRepository commandRepository;
+    private final ModelRepository modelRepository;
 
     @Qualifier("actionCommandMapper")
     private final ActionCommandMapper mapper;
@@ -75,6 +78,13 @@ public class ActionCommandService {
     public void deleteAction(Long id) {
         actionRepository.deleteById(id);
     }
+
+    public List<ActionResponse> getActionsByModel(Long modelId) {
+        return modelRepository.findByIdWithActions(modelId)
+                .map(model -> mapper.toActionResponseList(new ArrayList<>(model.getActions())))
+                .orElse(List.of());
+    }
+
 
     // ==================== Command ====================
 

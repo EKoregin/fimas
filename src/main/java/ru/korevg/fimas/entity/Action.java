@@ -17,7 +17,9 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 @Entity
 @Table(name = "action")
@@ -41,7 +43,17 @@ public class Action {
             joinColumns = @JoinColumn(name = "action_id"),
             inverseJoinColumns = @JoinColumn(name = "command_id")
     )
-    @OrderColumn(name = "command_order")
+//    @OrderColumn(name = "command_order")
     @Builder.Default
-    private List<Command> commands = new ArrayList<>();
+    private Set<Command> commands = new LinkedHashSet<>();
+
+//    @ManyToMany
+//    @JoinTable(
+//            name = "action_command",
+//            joinColumns = @JoinColumn(name = "action_id"),
+//            inverseJoinColumns = @JoinColumn(name = "command_id")
+//    )
+//    @OrderColumn(name = "command_order")
+//    @Builder.Default
+//    private List<Command> commands = new ArrayList<>();
 }

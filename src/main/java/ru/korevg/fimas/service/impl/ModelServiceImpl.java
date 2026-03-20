@@ -16,6 +16,7 @@ import ru.korevg.fimas.mapper.ModelMapper;
 import ru.korevg.fimas.repository.ModelRepository;
 import ru.korevg.fimas.repository.VendorRepository;
 import ru.korevg.fimas.service.ModelService;
+import ru.korevg.fimas.service.PolicyExecStrategyFactory;
 
 import java.util.List;
 import java.util.Optional;
@@ -29,16 +30,17 @@ public class ModelServiceImpl implements ModelService {
     private final ModelRepository modelRepository;
     private final VendorRepository vendorRepository;
     private final ModelMapper modelMapper;
+    private final PolicyExecStrategyFactory strategyFactory;
 
     @Override
     @Transactional
     public ModelResponse create(ModelCreateRequest request) {
-        Vendor vendor = vendorRepository.findById(request.vendorId())
-                .orElseThrow(() -> new EntityNotFoundException("Vendor с ID " + request.vendorId() + " не найден"));
+        Vendor vendor = vendorRepository.findById(request.getVendorId())
+                .orElseThrow(() -> new EntityNotFoundException("Vendor с ID " + request.getVendorId() + " не найден"));
 
-        if (modelRepository.existsByNameAndVendorId(request.name(), request.vendorId())) {
+        if (modelRepository.existsByNameAndVendorId(request.getName(), request.getVendorId())) {
             throw new EntityExistsException(
-                    "Модель '" + request.name() + "' уже существует у вендора " + vendor.getName()
+                    "Модель '" + request.getName() + "' уже существует у вендора " + vendor.getName()
             );
         }
 
@@ -57,9 +59,9 @@ public class ModelServiceImpl implements ModelService {
 
         modelMapper.updateFromRequest(request, model);
 
-        if (request.vendorId() != null) {
-            Vendor newVendor = vendorRepository.findById(request.vendorId())
-                    .orElseThrow(() -> new EntityNotFoundException("Vendor с ID " + request.vendorId() + " не найден"));
+        if (request.getVendorId() != null) {
+            Vendor newVendor = vendorRepository.findById(request.getVendorId())
+                    .orElseThrow(() -> new EntityNotFoundException("Vendor с ID " + request.getVendorId() + " не найден"));
             model.setVendor(newVendor);
         }
 
@@ -91,7 +93,18 @@ public class ModelServiceImpl implements ModelService {
     @Override
     public List<ModelResponse> findAll() {
         return modelRepository.findAll().stream()
-                .map(model -> new ModelResponse(model.getId(), model.getName(), model.getVendor().getName()))
+                .map(modelMapper::toResponse)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public Model getModelWithStrategy(Model model) {
+        model.setStrategy(strategyFactory.getStrategy(model));
+        return model;
+    }
+
+    @Override
+    public long count() {
+        return modelRepository.count();
     }
 }

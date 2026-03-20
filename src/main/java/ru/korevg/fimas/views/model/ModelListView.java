@@ -1,4 +1,4 @@
-package ru.korevg.fimas.views.firewall;
+package ru.korevg.fimas.views.model;
 
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
@@ -14,33 +14,32 @@ import com.vaadin.flow.data.provider.DataProvider;
 import com.vaadin.flow.data.provider.SortDirection;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
-import com.vaadin.flow.router.RouteParameters;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import ru.korevg.fimas.dto.firewall.FirewallResponse;
+import ru.korevg.fimas.dto.model.ModelResponse;
 import ru.korevg.fimas.service.FirewallService;
 import ru.korevg.fimas.service.ModelService;
+import ru.korevg.fimas.service.VendorService;
 import ru.korevg.fimas.views.layout.MainLayout;
-import ru.korevg.fimas.views.policy.PolicyListView;
 
-@PageTitle("Firewalls")
-@Route(value = "firewalls", layout = MainLayout.class)
-public class FirewallListView extends VerticalLayout {
+@PageTitle("Models")
+@Route(value = "models", layout = MainLayout.class)
+public class ModelListView extends VerticalLayout {
 
-    private final FirewallService firewallService;
     private final ModelService modelService;
+    private final VendorService vendorService;
 
-    private final Grid<FirewallResponse> grid = new Grid<>(FirewallResponse.class, false);
+    private final Grid<ModelResponse> grid = new Grid<>(ModelResponse.class, false);
 
-    public FirewallListView(FirewallService firewallService, ModelService modelService) {
-        this.firewallService = firewallService;
+    public ModelListView(ModelService modelService, VendorService vendorService) {
         this.modelService = modelService;
+        this.vendorService = vendorService;
 
         setSizeFull();
-        addClassName("firewall-list-view");
+        addClassName("model-list-view");
         configureGrid();
-        Button createBtn = new Button("Создать Firewall", e -> openCreateForm());
+        Button createBtn = new Button("Создать Model", e -> openCreateForm());
         add(createBtn, grid);
     }
 
@@ -53,49 +52,38 @@ public class FirewallListView extends VerticalLayout {
         grid.setSizeFull();
 
         // Колонки
-        grid.addColumn(FirewallResponse::id)
+        grid.addColumn(ModelResponse::id)
                 .setHeader("ID")
                 .setSortable(true)
                 .setKey("id")
                 .setWidth("80px")
                 .setFlexGrow(0);
 
-        grid.addColumn(FirewallResponse::name)
+        grid.addColumn(ModelResponse::name)
                 .setHeader("Имя")
                 .setSortable(true)
                 .setKey("name")
                 .setWidth("200px");
 
-        grid.addColumn(FirewallResponse::description)
-                .setHeader("Описание")
+        grid.addColumn(ModelResponse::vendorName)
+                .setHeader("Производитель")
                 .setFlexGrow(3);
 
-        grid.addColumn(FirewallResponse::modelName)
-                .setHeader("Модель")
-                .setWidth("180px");
 
-        grid.addColumn(FirewallResponse::vendorName)
-                .setHeader("Производитель")
-                .setWidth("160px");
-
-        grid.addComponentColumn(fw -> new Button("Политики", e ->
-                getUI().ifPresent(ui -> ui.navigate("firewalls/" + fw.id() + "/policies"))
-        )).setHeader("Политики").setWidth("120px");
-
-        grid.addComponentColumn(fw -> new Button("Действия", e ->
-                getUI().ifPresent(ui -> ui.navigate("model/" + fw.modelId() + "/actions/firewall/" + fw.id()))
+        grid.addComponentColumn(modelResponse -> new Button("Действия", e ->
+                getUI().ifPresent(ui -> ui.navigate("model/" + modelResponse.id() + "/actions"))
         )).setHeader("Actions").setWidth("120px");
 
         // Действия
-        grid.addComponentColumn(fw -> {
+        grid.addComponentColumn(modelResponse -> {
                     Button edit = new Button(VaadinIcon.EDIT.create());
                     edit.setTooltipText("Редактировать");
-                    edit.addClickListener(e -> openEditForm(fw));
+                    edit.addClickListener(e -> openEditForm(modelResponse));
                     edit.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
 
                     Button delete = new Button(VaadinIcon.TRASH.create());
                     delete.setTooltipText("Удалить");
-                    delete.addClickListener(e -> showDeleteConfirm(fw.id()));
+                    delete.addClickListener(e -> showDeleteConfirm(modelResponse.id()));
                     delete.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
 
                     HorizontalLayout layout = new HorizontalLayout(edit, delete);
@@ -125,37 +113,37 @@ public class FirewallListView extends VerticalLayout {
 
                     Pageable pageable = PageRequest.of(page, pageSize, sort);
 
-                    return firewallService.findAll(pageable).stream();
+                    return modelService.findAll(pageable).stream();
                 },
-                query -> (int) firewallService.count()
+                query -> (int) modelService.count()
         ));
     }
 
-    private void openEditForm(FirewallResponse response) {
-        FirewallForm form = new FirewallForm(firewallService, modelService);
-        form.setAfterSaveCallback(() -> grid.getDataProvider().refreshAll());
-        form.openEdit(response);
+    private void openCreateForm() {
+        ModelForm form = new ModelForm(modelService, vendorService);
+        form.setAfterSaveCallback(v -> refreshGrid());
+        form.openCreate();
     }
 
-    private void openCreateForm() {
-        FirewallForm form = new FirewallForm(firewallService, modelService);
-        form.setAfterSaveCallback(() -> grid.getDataProvider().refreshAll());
-        form.openCreate();
+    private void openEditForm(ModelResponse response) {
+        ModelForm form = new ModelForm(modelService, vendorService);
+        form.setAfterSaveCallback(v -> refreshGrid());
+        form.openEdit(response);
     }
 
     private void showDeleteConfirm(Long id) {
         ConfirmDialog dialog = new ConfirmDialog();
-        dialog.setHeader("Удалить Firewall?");
-        dialog.setText("Это действие нельзя отменить. Связанные динамические адреса тоже будут удалены.");
+        dialog.setHeader("Удалить Model?");
+        dialog.setText("Это действие нельзя отменить. Связанные действия будут удалены");
         dialog.setConfirmText("Удалить");
         dialog.setCancelable(true);
         dialog.setCancelText("Отмена");
 
         dialog.addConfirmListener(e -> {
             try {
-                firewallService.delete(id);
+                modelService.delete(id);
                 refreshGrid();
-                Notification.show("Firewall удалён", 3000, Notification.Position.TOP_CENTER);
+                Notification.show("Model удалёна", 3000, Notification.Position.TOP_CENTER);
             } catch (Exception ex) {
                 Notification.show("Ошибка: " + ex.getMessage(), 5000, Notification.Position.MIDDLE);
             }

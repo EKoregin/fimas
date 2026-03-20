@@ -11,4 +11,6 @@ public interface PolicyExecStrategy {
      * @return список результатов (output каждой команды)
      */
     List<String> execute(Action action, String host, int port, String username, String password) throws Exception;
+
+    String getSupportedKey();
 }

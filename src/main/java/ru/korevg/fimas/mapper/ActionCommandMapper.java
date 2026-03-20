@@ -52,6 +52,8 @@ public interface ActionCommandMapper {
     @Mapping(target = "commands", ignore = true)
     Action toEntity(ActionUpdate dto);
 
+    Action toEntity(ActionResponse dto);
+
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "commands", ignore = true)
     void updateEntityFromDto(ActionUpdate dto, @MappingTarget Action entity);

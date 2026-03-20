@@ -3,9 +3,12 @@ spring:
     name: fimas
   jpa:
     database: postgresql
-    show-sql: false
+#    show-sql: true
     hibernate:
       ddl-auto: none
+    properties:
+      hibernate:
+        format_sql: true
   datasource:
     url: jdbc:postgresql://localhost:5432/fimas
     username: fimas

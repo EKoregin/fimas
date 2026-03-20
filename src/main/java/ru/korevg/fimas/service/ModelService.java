@@ -5,6 +5,7 @@ import org.springframework.data.domain.Pageable;
 import ru.korevg.fimas.dto.model.ModelCreateRequest;
 import ru.korevg.fimas.dto.model.ModelResponse;
 import ru.korevg.fimas.dto.model.ModelUpdateRequest;
+import ru.korevg.fimas.entity.Model;
 
 import java.util.List;
 import java.util.Optional;
@@ -22,4 +23,8 @@ public interface ModelService {
     Page<ModelResponse> findAll(Pageable pageable);
 
     List<ModelResponse> findAll();
+
+    Model getModelWithStrategy(Model model);
+
+    long count();
 }

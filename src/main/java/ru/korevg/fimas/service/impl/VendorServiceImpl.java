@@ -15,6 +15,9 @@ import ru.korevg.fimas.mapper.VendorMapper;
 import ru.korevg.fimas.repository.VendorRepository;
 import ru.korevg.fimas.service.VendorService;
 
+import java.util.List;
+import java.util.Optional;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -64,8 +67,20 @@ public class VendorServiceImpl implements VendorService {
     }
 
     @Override
+    public Optional<VendorResponse> findByIdOptional(Long id) {
+        return vendorRepository.findById(id).map(vendorMapper::toResponse);
+    }
+
+    @Override
     public Page<VendorResponse> findAll(Pageable pageable) {
         return vendorRepository.findAll(pageable)
                 .map(vendorMapper::toResponse);
+    }
+
+    @Override
+    public List<VendorResponse> findAll() {
+        return vendorRepository.findAll().stream()
+                .map(vendorMapper::toResponse)
+                .toList();
     }
 }
