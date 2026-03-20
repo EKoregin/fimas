@@ -15,6 +15,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.ToString;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -43,17 +44,6 @@ public class Action {
             joinColumns = @JoinColumn(name = "action_id"),
             inverseJoinColumns = @JoinColumn(name = "command_id")
     )
-//    @OrderColumn(name = "command_order")
     @Builder.Default
     private Set<Command> commands = new LinkedHashSet<>();
-
-//    @ManyToMany
-//    @JoinTable(
-//            name = "action_command",
-//            joinColumns = @JoinColumn(name = "action_id"),
-//            inverseJoinColumns = @JoinColumn(name = "command_id")
-//    )
-//    @OrderColumn(name = "command_order")
-//    @Builder.Default
-//    private List<Command> commands = new ArrayList<>();
 }

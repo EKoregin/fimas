@@ -25,9 +25,12 @@ import ru.korevg.fimas.entity.Model;
 import ru.korevg.fimas.exception.EntityNotFoundException;
 import ru.korevg.fimas.repository.ModelRepository;
 import ru.korevg.fimas.service.ActionCommandService;
+import ru.korevg.fimas.service.CommandService;
+import ru.korevg.fimas.service.VendorService;
 import ru.korevg.fimas.views.model.ModelListView;
 
 import java.util.List;
+import java.util.Set;
 
 @Slf4j
 @Route("model/:modelId/actions")
@@ -36,6 +39,7 @@ public class ModelActionsView extends VerticalLayout
         implements BeforeEnterObserver, HasDynamicTitle {
 
     private final ActionCommandService actionCommandService;
+    private final CommandService commandService;
     private final ModelRepository modelRepository;
 
     private final Grid<ActionResponse> grid = new Grid<>(ActionResponse.class, false);
@@ -46,9 +50,10 @@ public class ModelActionsView extends VerticalLayout
 
     private String dynamicTitle = "Действия модели";
 
-    public ModelActionsView(ActionCommandService actionCommandService,
+    public ModelActionsView(ActionCommandService actionCommandService, CommandService commandService,
                             ModelRepository modelRepository) {
         this.actionCommandService = actionCommandService;
+        this.commandService = commandService;
         this.modelRepository = modelRepository;
 
         setSizeFull();
@@ -80,7 +85,7 @@ public class ModelActionsView extends VerticalLayout
                 .setAutoWidth(true);
 
         grid.addColumn(action -> {
-            List<CommandResponse> cmds = action.getCommands();
+            Set<CommandResponse> cmds = action.getCommands();
             return cmds.isEmpty() ? "— нет —" : cmds.size() + " шт.";
         }).setHeader("Команды").setAutoWidth(true);
 
@@ -135,23 +140,17 @@ public class ModelActionsView extends VerticalLayout
     }
 
     private void openActionEditor(Long actionId) {
-        // Здесь должен быть диалог или отдельная view для редактирования
-        // Пока — заглушка с сообщением
-        Dialog dialog = new Dialog();
-        dialog.setHeaderTitle(actionId == null ? "Новое действие" : "Редактирование действия");
+        ActionForm form;
 
-        // TODO: добавить форму, Binder, поля name, commands и т.д.
-
-        Button save = new Button("Сохранить", e -> {
-            Notification.show("Сохранение пока не реализовано");
-            dialog.close();
-            loadActions(); // refresh после сохранения
-        });
-
-        Button cancel = new Button("Отмена", e -> dialog.close());
-
-        dialog.getFooter().add(cancel, save);
-        dialog.open();
+        if (actionId == null) {
+            form = new ActionForm(actionCommandService, commandService, this::loadActions, currentModel);
+            form.openCreate();
+        } else {
+            ActionResponse action = actionCommandService.getActionById(actionId)
+                    .orElseThrow(() -> new IllegalStateException("Action not found"));
+            form = new ActionForm(actionCommandService, commandService, this::loadActions, currentModel);
+            form.openEdit(action);
+        }
     }
 
     private void confirmDelete(ActionResponse action) {
@@ -161,8 +160,8 @@ public class ModelActionsView extends VerticalLayout
         confirm.add("Вы действительно хотите удалить действие \"" + action.getName() + "\"?");
 
         Button yes = new Button("Удалить", e -> {
-            // TODO: actionCommandService.delete(action.getId());
-            Notification.show("Действие удалено (заглушка)");
+            actionCommandService.deleteAction(action.getId());
+            Notification.show("Действие удалено");
             confirm.close();
             loadActions();
         });

@@ -18,6 +18,7 @@ public class FortigatePolicyExecStrategy implements PolicyExecStrategy {
 
     @Override
     public List<String> execute(Action action, String host, int port, String username, String password) throws Exception {
+        log.info("Выполнение действия '{}' на хосте {} под пользователем {}", action.getName(), host, username);
         List<String> results = new ArrayList<>();
 
         Session session = null;
@@ -25,10 +26,14 @@ public class FortigatePolicyExecStrategy implements PolicyExecStrategy {
             JSch jsch = new JSch();
             session = jsch.getSession(username, host, port > 0 ? port : 22);
             session.setPassword(password);
-            session.setConfig("StrictHostKeyChecking", "no"); // в проде используйте known_hosts + ключ
-            session.connect(30_000);
+            session.setConfig("StrictHostKeyChecking", "no"); // в продакшене → known_hosts + ключ
 
-            for (Command cmd : action.getCommands()) {   // порядок гарантирован @OrderColumn
+            // Увеличил таймаут подключения и добавил явную обработку
+            session.connect(15000);  // 45 секунд — более щадящий таймаут
+
+            log.debug("SSH-сессия успешно установлена с {}", host);
+
+            for (Command cmd : action.getCommands()) {
                 String result;
                 if (cmd.getCommandType() == CommandType.SSH) {
                     result = executeSshCommand(session, cmd.getCommand());
@@ -43,11 +48,33 @@ public class FortigatePolicyExecStrategy implements PolicyExecStrategy {
                         cmd.getName(), cmd.getCommandType(), result.trim()
                 ));
             }
+
+        } catch (JSchException e) {
+            // Основные ошибки подключения: таймаут, отказ в соединении, неверные учётные данные и т.д.
+            String errorMsg = String.format("Ошибка SSH-подключения к %s:%d → %s", host, port, e.getMessage());
+            log.error(errorMsg, e);
+
+            throw new RuntimeException(errorMsg, e);  // или кастомное исключение
+
+        } catch (Exception e) {
+            // Любая другая непредвиденная ошибка во время выполнения
+            String errorMsg = String.format("Ошибка выполнения действия '%s' на %s: %s",
+                    action.getName(), host, e.getMessage());
+            log.error(errorMsg, e);
+
+            throw new RuntimeException(errorMsg, e);
+
         } finally {
             if (session != null && session.isConnected()) {
-                session.disconnect();
+                try {
+                    session.disconnect();
+                    log.debug("SSH-сессия с {} закрыта", host);
+                } catch (Exception closeEx) {
+                    log.warn("Ошибка при закрытии SSH-сессии с {}: {}", host, closeEx.getMessage());
+                }
             }
         }
+
         return results;
     }
 

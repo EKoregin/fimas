@@ -34,6 +34,7 @@ public interface ActionCommandMapper {
     @Mapping(target = "vendorName", source = "vendor.name")
     CommandResponse toResponse(Command command);
 
+    @Mapping(target = "vendor.id", source = "vendorId")
     Command toEntity(CommandCreate dto);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)

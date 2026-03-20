@@ -6,8 +6,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import ru.korevg.fimas.dto.command.CommandResponse;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 @Data
 @Builder
@@ -19,5 +19,5 @@ public class ActionResponse {
     private String name;
 
     @Builder.Default
-    private List<CommandResponse> commands = new ArrayList<>();
+    private Set<CommandResponse> commands = new LinkedHashSet<>();
 }

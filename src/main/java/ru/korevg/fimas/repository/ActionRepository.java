@@ -16,4 +16,6 @@ public interface ActionRepository extends JpaRepository<Action, Long> {
     // Загрузка Action вместе со всеми командами (EAGER fetch)
     @Query("SELECT a FROM Action a LEFT JOIN FETCH a.commands WHERE a.id = :id")
     Optional<Action> findByIdWithCommands(Long id);
+
+    boolean existsByCommandsId(Long commandId);
 }

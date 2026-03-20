@@ -5,7 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 @Data
 @Builder
@@ -14,5 +15,7 @@ import java.util.List;
 public class ActionUpdate {
 
     private String name;
-    private List<Long> commandIds;
+
+    @Builder.Default
+    private Set<Long> commandIds = new LinkedHashSet<>();
 }

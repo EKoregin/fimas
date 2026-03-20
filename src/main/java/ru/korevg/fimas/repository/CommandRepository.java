@@ -16,6 +16,6 @@ public interface CommandRepository extends JpaRepository<Command, Long> {
     // Найти команды по типу (SSH / HTTPS)
     List<Command> findByCommandType(CommandType commandType);
 
-    // Найти команды, используемые в конкретном Action
-//    List<Command> findByActionId(Long actionId);
+    boolean existsById(Long id);
+
 }
