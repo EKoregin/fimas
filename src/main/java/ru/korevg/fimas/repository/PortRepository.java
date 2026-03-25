@@ -19,6 +19,6 @@ public interface PortRepository extends JpaRepository<Port, Long> {
     boolean existsByProtocolAndDstPort(Protocol protocol, String dstPort);
 
     @Query("SELECT p.id AS id, p.protocol AS protocol, p.srcPort AS srcPort, p.dstPort AS dstPort " +
-            "FROM Port p ORDER BY p.id")
+            "FROM Port p ORDER BY p.dstPort")
     List<PortShortProjection> findAllShort();
 }
