@@ -1,9 +1,12 @@
 package ru.korevg.fimas.service.strategy;
 
 import com.jcraft.jsch.*;
+import com.vaadin.open.App;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
+import ru.korevg.fimas.config.AppConstants;
+import ru.korevg.fimas.config.LocalCommandHandlerRegistry;
 import ru.korevg.fimas.entity.Action;
 import ru.korevg.fimas.entity.Command;
 import ru.korevg.fimas.entity.CommandType;
@@ -21,23 +24,14 @@ import java.util.stream.Collectors;
 public class FortigatePolicyExecStrategy implements PolicyExecStrategy {
 
     private final RestTemplate restTemplate = new RestTemplate(); // можно заинжектить, если нужно
-    private final Map<String, LocalCommandHandler> localHandlers;
+    private final LocalCommandHandlerRegistry localHandlerRegistry;
 
-    public FortigatePolicyExecStrategy(List<LocalCommandHandler> handlers) {
-        this.localHandlers = handlers.stream()
-                .collect(Collectors.toMap(
-                        LocalCommandHandler::getCommandKey,
-                        handler -> handler,
-                        (existing, replacement) -> replacement, // на случай дубликатов
-                        ConcurrentHashMap::new
-                ));
-
-        log.info("Зарегистрировано {} локальных обработчиков: {}",
-                localHandlers.size(), localHandlers.keySet());
+    public FortigatePolicyExecStrategy(LocalCommandHandlerRegistry localHandlerRegistry) {
+        this.localHandlerRegistry = localHandlerRegistry;
     }
 
     @Override
-    public List<String> execute(Action action, String host, int port, String username, String password) throws Exception {
+    public List<String> execute(Action action, String vendorKey, String host, int port, String username, String password) throws Exception {
         List<String> results = new ArrayList<>();
 
         // Определяем, нужен ли SSH-сессия вообще
@@ -70,7 +64,7 @@ public class FortigatePolicyExecStrategy implements PolicyExecStrategy {
                         break;
 
                     case LOCAL:
-                        result = executeLocalHandler(cmd);   // передаём команду, если нужно
+                        result = executeLocalHandler(cmd, vendorKey);
                         break;
 
                     default:
@@ -178,169 +172,28 @@ public class FortigatePolicyExecStrategy implements PolicyExecStrategy {
     }
 
     /** Локальный обработчик (можно расширять) */
-    private String executeLocalHandler(Command command) {
-        String key = command.getCommand();           // ← именно это поле используется как ключ!
+    private String executeLocalHandler(Command command, String vendorKey) {
+        if (vendorKey == null) {
+            vendorKey = AppConstants.FORTIGATE;
+        }
 
-        LocalCommandHandler handler = localHandlers.get(key);
+        LocalCommandHandler handler = localHandlerRegistry.getHandler(vendorKey.toLowerCase(), command.getCommand());
 
         if (handler == null) {
-            log.warn("Не найден обработчик для команды: '{}'", key);
-            return "Неизвестная локальная команда: " + key;
+            log.warn("Не найден обработчик для вендора '{}' и команды '{}'", vendorKey, command.getCommand());
+            return "Неизвестная локальная команда: " + command.getCommand();
         }
 
         try {
-            log.info("Запускаем локальный обработчик '{}' для команды: {}",
-                    handler.getClass().getSimpleName(), key);
-
             return handler.handle(command);
-
         } catch (Exception e) {
-            log.error("Ошибка в обработчике для команды '{}'", key, e);
+            log.error("Ошибка в обработчике {}/{}", vendorKey, command.getCommand(), e);
             return "Ошибка локального обработчика: " + e.getMessage();
         }
     }
 
     @Override
     public String getSupportedKey() {
-        return "fortigate";
+        return AppConstants.FORTIGATE;
     }
 }
-
-//package ru.korevg.fimas.service.strategy;
-//
-//import com.jcraft.jsch.*;
-//import lombok.extern.slf4j.Slf4j;
-//import org.springframework.stereotype.Component;
-//import org.springframework.web.client.RestTemplate;
-//import ru.korevg.fimas.entity.Action;
-//import ru.korevg.fimas.entity.Command;
-//import ru.korevg.fimas.entity.CommandType;
-//
-//import java.io.*;
-//import java.util.*;
-//
-//@Slf4j
-//@Component
-//public class FortigatePolicyExecStrategy implements PolicyExecStrategy {
-//
-//    @Override
-//    public List<String> execute(Action action, String host, int port, String username, String password) throws Exception {
-//        log.info("Выполнение действия '{}' на хосте {} под пользователем {}", action.getName(), host, username);
-//        List<String> results = new ArrayList<>();
-//
-//        Session session = null;
-//        try {
-//            JSch jsch = new JSch();
-//            session = jsch.getSession(username, host, port > 0 ? port : 22);
-//            session.setPassword(password);
-//            session.setConfig("StrictHostKeyChecking", "no"); // в продакшене → known_hosts + ключ
-//
-//            // Увеличил таймаут подключения и добавил явную обработку
-//            session.connect(15000);  // 45 секунд — более щадящий таймаут
-//
-//            log.debug("SSH-сессия успешно установлена с {}", host);
-//
-//            for (Command cmd : action.getCommands()) {
-//                String result;
-//                if (cmd.getCommandType() == CommandType.SSH) {
-//                    result = executeSshCommand(session, cmd.getCommand());
-//                } else if (cmd.getCommandType() == CommandType.HTTPS) {
-//                    result = executeHttpsFortigateApi(host, cmd.getCommand(), username, password);
-//                } else if (cmd.getCommandType() == CommandType.LOCAL) {
-//                    log.info("Вызываю локальный обработчик");
-//                    result = executeLocalHandler();
-//                } else {
-//                    result = "Неизвестный тип команды: " + cmd.getCommandType();
-//                }
-//
-//                results.add(String.format(
-//                        "=== %s (%s) ===\n%s\n",
-//                        cmd.getName(), cmd.getCommandType(), result.trim()
-//                ));
-//            }
-//
-//        } catch (JSchException e) {
-//            // Основные ошибки подключения: таймаут, отказ в соединении, неверные учётные данные и т.д.
-//            String errorMsg = String.format("Ошибка SSH-подключения к %s:%d → %s", host, port, e.getMessage());
-//            log.error(errorMsg, e);
-//
-//            throw new RuntimeException(errorMsg, e);  // или кастомное исключение
-//
-//        } catch (Exception e) {
-//            // Любая другая непредвиденная ошибка во время выполнения
-//            String errorMsg = String.format("Ошибка выполнения действия '%s' на %s: %s",
-//                    action.getName(), host, e.getMessage());
-//            log.error(errorMsg, e);
-//
-//            throw new RuntimeException(errorMsg, e);
-//
-//        } finally {
-//            if (session != null && session.isConnected()) {
-//                try {
-//                    session.disconnect();
-//                    log.debug("SSH-сессия с {} закрыта", host);
-//                } catch (Exception closeEx) {
-//                    log.warn("Ошибка при закрытии SSH-сессии с {}: {}", host, closeEx.getMessage());
-//                }
-//            }
-//        }
-//
-//        return results;
-//    }
-//
-//    private String executeLocalHandler() {
-//        return "Сгенерированный вывод локальным обработчиком";
-//    }
-//
-//    @Override
-//    public String getSupportedKey() {
-//        return "fortigate";
-//    }
-//
-//    /** Выполнение одной SSH-команды (Fortigate CLI) */
-//    private String executeSshCommand(Session session, String command) throws Exception {
-//        log.info("Выполняю команду: {} на {}", command, session.getHost());
-//        ChannelExec channel = null;
-//        try {
-//            channel = (ChannelExec) session.openChannel("exec");
-//            channel.setCommand(command);
-//
-//            ByteArrayOutputStream out = new ByteArrayOutputStream();
-//            ByteArrayOutputStream err = new ByteArrayOutputStream();
-//            channel.setOutputStream(out);
-//            channel.setErrStream(err);
-//
-//            channel.connect();
-//
-//            // ждём завершения
-//            while (!channel.isClosed()) {
-//                Thread.sleep(100);
-//            }
-//
-//            String output = out.toString("UTF-8");
-//            String error = err.toString("UTF-8");
-//
-//            return error.isEmpty() ? output : output + "\nERROR: " + error;
-//        } finally {
-//            if (channel != null) channel.disconnect();
-//        }
-//    }
-//
-//    /** Placeholder для Fortigate REST API (HTTPS) */
-//    private String executeHttpsFortigateApi(String host, String apiPath, String username, String password) {
-//        // В реальном проекте:
-//        // 1. Сначала POST /api/v2/auth/login → получаем X-Auth-Token (или используйте API-ключ)
-//        // 2. Затем GET/POST по apiPath
-//        // Здесь простой пример с RestTemplate:
-//
-//        try {
-//            RestTemplate rest = new RestTemplate();
-//            // Добавьте заголовки и токен в реальной реализации
-//            String url = "https://" + host + apiPath;
-//            // String result = rest.getForObject(url, String.class); // + headers
-//            return "HTTPS Fortigate API вызван: " + url + "\n(полная реализация с токеном — в следующем шаге)";
-//        } catch (Exception e) {
-//            return "HTTPS ошибка: " + e.getMessage();
-//        }
-//    }
-//}

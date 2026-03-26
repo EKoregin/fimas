@@ -10,7 +10,7 @@ public interface PolicyExecStrategy {
      * Выполняет все команды Action по порядку.
      * @return список результатов (output каждой команды)
      */
-    List<String> execute(Action action, String host, int port, String username, String password) throws Exception;
+    List<String> execute(Action action, String vendorName, String host, int port, String username, String password) throws Exception;
 
     String getSupportedKey();
 }

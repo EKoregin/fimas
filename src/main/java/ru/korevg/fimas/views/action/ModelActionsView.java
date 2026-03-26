@@ -8,6 +8,7 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H3;
+import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
@@ -19,6 +20,7 @@ import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.spring.annotation.UIScope;
 import lombok.extern.slf4j.Slf4j;
+import ru.korevg.fimas.config.LocalCommandHandlerRegistry;
 import ru.korevg.fimas.dto.action.ActionResponse;
 import ru.korevg.fimas.dto.command.CommandResponse;
 import ru.korevg.fimas.entity.Model;
@@ -41,6 +43,7 @@ public class ModelActionsView extends VerticalLayout
     private final ActionCommandService actionCommandService;
     private final CommandService commandService;
     private final ModelRepository modelRepository;
+    private final LocalCommandHandlerRegistry localHandlerRegistry;
 
     private final Grid<ActionResponse> grid = new Grid<>(ActionResponse.class, false);
     private final H3 title = new H3();
@@ -51,10 +54,11 @@ public class ModelActionsView extends VerticalLayout
     private String dynamicTitle = "Действия модели";
 
     public ModelActionsView(ActionCommandService actionCommandService, CommandService commandService,
-                            ModelRepository modelRepository) {
+                            ModelRepository modelRepository, LocalCommandHandlerRegistry localHandlerRegistry) {
         this.actionCommandService = actionCommandService;
         this.commandService = commandService;
         this.modelRepository = modelRepository;
+        this.localHandlerRegistry = localHandlerRegistry;
 
         setSizeFull();
         setPadding(true);
@@ -84,10 +88,43 @@ public class ModelActionsView extends VerticalLayout
                 .setHeader("Название")
                 .setAutoWidth(true);
 
-        grid.addColumn(action -> {
-            Set<CommandResponse> cmds = action.getCommands();
-            return cmds.isEmpty() ? "— нет —" : cmds.size() + " шт.";
-        }).setHeader("Команды").setAutoWidth(true);
+        grid.addComponentColumn(action -> {
+                    Set<CommandResponse> cmds = action.getCommands();
+
+                    if (cmds == null || cmds.isEmpty()) {
+                        Span empty = new Span("— нет команд —");
+                        empty.getStyle().set("color", "var(--lumo-secondary-text-color)");
+                        return empty;
+                    }
+
+                    VerticalLayout namesLayout = new VerticalLayout();
+                    namesLayout.setPadding(false);
+                    namesLayout.setSpacing(false);
+                    namesLayout.setMargin(false);
+
+                    cmds.stream()
+                            .map(CommandResponse::getName)
+                            .sorted(String::compareToIgnoreCase)   // алфавитный порядок
+                            .forEach(name -> {
+                                Span span = new Span(name);
+                                span.getStyle()
+                                        .set("display", "block")
+                                        .set("white-space", "normal")
+                                        .set("line-height", "1.35");
+                                namesLayout.add(span);
+                            });
+
+                    return namesLayout;
+                })
+                .setHeader("Команды")
+                .setAutoWidth(true)
+                .setFlexGrow(1)
+                .setResizable(true);
+
+//        grid.addColumn(action -> {
+//            Set<CommandResponse> cmds = action.getCommands();
+//            return cmds.isEmpty() ? "— нет —" : cmds.size() + " шт.";
+//        }).setHeader("Команды").setAutoWidth(true);
 
         grid.addComponentColumn(action -> {
             HorizontalLayout buttons = new HorizontalLayout();
@@ -143,12 +180,12 @@ public class ModelActionsView extends VerticalLayout
         ActionForm form;
 
         if (actionId == null) {
-            form = new ActionForm(actionCommandService, commandService, this::loadActions, currentModel);
+            form = new ActionForm(actionCommandService, commandService, this::loadActions, currentModel, localHandlerRegistry);
             form.openCreate();
         } else {
             ActionResponse action = actionCommandService.getActionById(actionId)
                     .orElseThrow(() -> new IllegalStateException("Action not found"));
-            form = new ActionForm(actionCommandService, commandService, this::loadActions, currentModel);
+            form = new ActionForm(actionCommandService, commandService, this::loadActions, currentModel, localHandlerRegistry);
             form.openEdit(action);
         }
     }
@@ -179,7 +216,14 @@ public class ModelActionsView extends VerticalLayout
                 getUI().ifPresent(ui -> ui.navigate(ModelListView.class))
         );
 
-        HorizontalLayout nav = new HorizontalLayout(backToModels);
+        Button firewalls = new Button("Firewalls", VaadinIcon.LIST.create());
+        firewalls.addClickListener(e ->
+                getUI().ifPresent(ui -> ui.navigate(
+                        "firewalls"
+                ))
+        );
+
+        HorizontalLayout nav = new HorizontalLayout(backToModels, firewalls);
         nav.setWidthFull();
         nav.setJustifyContentMode(JustifyContentMode.START);
         nav.setPadding(true);

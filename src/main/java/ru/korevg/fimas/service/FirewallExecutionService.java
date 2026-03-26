@@ -5,7 +5,6 @@ import org.springframework.stereotype.Service;
 import ru.korevg.fimas.dto.action.ActionResponse;
 import ru.korevg.fimas.entity.Model;
 import ru.korevg.fimas.mapper.ActionCommandMapper;
-import ru.korevg.fimas.repository.ModelRepository;
 
 import java.util.List;
 
@@ -25,6 +24,12 @@ public class FirewallExecutionService {
         ActionResponse actionDto = actionCommandService.getActionById(actionId)
                 .orElseThrow(() -> new RuntimeException("Action not found"));
 
-        return model.getStrategy().execute(actionCommandMapper.toEntity(actionDto), host, 22, username, password);
+        return model.getStrategy()
+                .execute(actionCommandMapper.toEntity(actionDto),
+                        model.getVendor().getName(),
+                        host,
+                        22,
+                        username,
+                        password);
     }
 }

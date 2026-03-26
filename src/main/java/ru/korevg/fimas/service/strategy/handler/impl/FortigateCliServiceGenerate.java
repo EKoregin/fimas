@@ -3,18 +3,17 @@ package ru.korevg.fimas.service.strategy.handler.impl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import ru.korevg.fimas.config.AppConstants;
 import ru.korevg.fimas.entity.Command;
 import ru.korevg.fimas.entity.Port;
 import ru.korevg.fimas.entity.Protocol;
 import ru.korevg.fimas.entity.Service;
 import ru.korevg.fimas.repository.ServiceRepository;
-import ru.korevg.fimas.service.ServiceService;
 import ru.korevg.fimas.service.strategy.handler.LocalCommandHandler;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 
 @Slf4j
@@ -123,5 +122,10 @@ public class FortigateCliServiceGenerate implements LocalCommandHandler {
     @Override
     public String getCommandKey() {
         return "config firewall service custom";
+    }
+
+    @Override
+    public String getVendorKey() {
+        return AppConstants.FORTIGATE;
     }
 }

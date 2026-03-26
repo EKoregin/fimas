@@ -17,7 +17,7 @@ import java.util.concurrent.TimeoutException;
 public class HuaweiPolicyExecStrategy implements PolicyExecStrategy {
 
     @Override
-    public List<String> execute(Action action, String host, int port, String username, String password) throws Exception {
+    public List<String> execute(Action action, String vendorKey, String host, int port, String username, String password) throws Exception {
         List<String> results = new ArrayList<>();
 
         Session session = null;

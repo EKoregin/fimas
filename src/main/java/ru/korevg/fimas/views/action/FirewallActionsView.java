@@ -54,7 +54,7 @@ public class FirewallActionsView extends VerticalLayout
     private Model currentModel;
     private Firewall currentFirewall;
 
-    private String dynamicTitle = "Действия для Firewall";
+    private String dynamicTitle = "Действия для Firewall: ";
 
     public FirewallActionsView(ActionCommandService actionCommandService,
                                FirewallExecutionService executionService,
@@ -79,10 +79,38 @@ public class FirewallActionsView extends VerticalLayout
                 .setHeader("Название действия")
                 .setAutoWidth(true);
 
-        grid.addColumn(action -> {
-            Set<CommandResponse> cmds = action.getCommands();
-            return cmds.isEmpty() ? "— нет команд —" : cmds.size() + " команд(ы)";
-        }).setHeader("Команды").setAutoWidth(true);
+        grid.addComponentColumn(action -> {
+                    Set<CommandResponse> cmds = action.getCommands();
+
+                    if (cmds == null || cmds.isEmpty()) {
+                        Span empty = new Span("— нет команд —");
+                        empty.getStyle().set("color", "var(--lumo-secondary-text-color)");
+                        return empty;
+                    }
+
+                    VerticalLayout namesLayout = new VerticalLayout();
+                    namesLayout.setPadding(false);
+                    namesLayout.setSpacing(false);
+                    namesLayout.setMargin(false);
+
+                    cmds.stream()
+                            .map(CommandResponse::getName)
+                            .sorted(String::compareToIgnoreCase)   // алфавитный порядок
+                            .forEach(name -> {
+                                Span span = new Span(name);
+                                span.getStyle()
+                                        .set("display", "block")
+                                        .set("white-space", "normal")
+                                        .set("line-height", "1.35");
+                                namesLayout.add(span);
+                            });
+
+                    return namesLayout;
+                })
+                .setHeader("Команды")
+                .setAutoWidth(true)
+                .setFlexGrow(1)
+                .setResizable(true);
 
         grid.addComponentColumn(action -> createExecuteComponent(action))
                 .setHeader("Выполнить")
@@ -137,7 +165,7 @@ public class FirewallActionsView extends VerticalLayout
         currentFirewall = firewallRepository.findById(fwId)
                 .orElseThrow(() -> new EntityNotFoundException("Firewall not found: " + fwId));
 
-        dynamicTitle = "Действия — " + currentFirewall.getName() +
+        dynamicTitle = dynamicTitle + currentFirewall.getName() +
                 " / " + currentModel.getVendor().getName() + ": " + currentModel.getName();
         getChildren().filter(c -> c instanceof H3)
                 .findFirst()
