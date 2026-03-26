@@ -1,0 +1,2 @@
+ALTER TABLE command
+DROP CONSTRAINT IF EXISTS chk_command_type;

@@ -1,5 +1,6 @@
 package ru.korevg.fimas.repository;
 
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -18,4 +19,8 @@ public interface ServiceRepository extends JpaRepository<Service, Long> {
 
     @Query("SELECT new ru.korevg.fimas.dto.service.ServiceShortResponse(service.id, service.name) FROM Service service")
     List<ServiceShortResponse> findAllShort();
+
+    @EntityGraph(attributePaths = {"ports"})
+    @Query("SELECT s FROM Service s")
+    List<Service> findAllWithPorts();
 }

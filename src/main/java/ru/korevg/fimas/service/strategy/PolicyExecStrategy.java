@@ -1,4 +1,4 @@
-package ru.korevg.fimas.service;
+package ru.korevg.fimas.service.strategy;
 
 import ru.korevg.fimas.entity.Action;
 

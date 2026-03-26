@@ -16,7 +16,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import ru.korevg.fimas.service.PolicyExecStrategy;
+import ru.korevg.fimas.service.strategy.PolicyExecStrategy;
 
 import java.util.HashSet;
 import java.util.Set;

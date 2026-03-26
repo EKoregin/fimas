@@ -12,7 +12,6 @@ import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.progressbar.ProgressBar;
-import com.vaadin.flow.data.renderer.ComponentRenderer;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.HasDynamicTitle;
@@ -33,13 +32,7 @@ import ru.korevg.fimas.views.model.ModelListView;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 
 @Slf4j
 @Route("model/:modelId/actions/firewall/:fwId")
@@ -54,7 +47,7 @@ public class FirewallActionsView extends VerticalLayout
 
     private final Grid<ActionResponse> grid = new Grid<>(ActionResponse.class, false);
     private final Map<Long, Button> actionButtons = new ConcurrentHashMap<>();
-    private final H3 title = new H3();
+
 
     private Long modelId;
     private Long fwId;
@@ -75,9 +68,8 @@ public class FirewallActionsView extends VerticalLayout
         setSizeFull();
         setPadding(true);
         setSpacing(true);
-
         configureGrid();
-        add(title, grid);
+        add(new H3(""), grid);
     }
 
     private void configureGrid() {
@@ -92,21 +84,27 @@ public class FirewallActionsView extends VerticalLayout
             return cmds.isEmpty() ? "— нет команд —" : cmds.size() + " команд(ы)";
         }).setHeader("Команды").setAutoWidth(true);
 
-        grid.addComponentColumn(action -> {
-                    Button btn = new Button("Выполнить", e -> executeAction(action));
-                    btn.addThemeName("primary");
-                    btn.setWidthFull();
-
-                    actionButtons.put(action.getId(), btn);
-
-                    return btn;
-                })
+        grid.addComponentColumn(action -> createExecuteComponent(action))
                 .setHeader("Выполнить")
                 .setKey("execute")
                 .setAutoWidth(true)
                 .setFlexGrow(0);
+    }
 
-        grid.getColumns().forEach(col -> col.setResizable(true));
+    private VerticalLayout createExecuteComponent(ActionResponse action) {
+        Button btn = new Button("Выполнить", e -> executeAction(action));
+        btn.addThemeName("primary");
+        btn.setWidthFull();
+
+        actionButtons.put(action.getId(), btn);
+
+        VerticalLayout wrapper = new VerticalLayout(btn);
+        wrapper.setPadding(false);
+        wrapper.setMargin(false);
+        wrapper.setSpacing(false);
+        wrapper.setWidthFull();
+
+        return wrapper;
     }
 
     @Override
@@ -141,12 +139,20 @@ public class FirewallActionsView extends VerticalLayout
 
         dynamicTitle = "Действия — " + currentFirewall.getName() +
                 " / " + currentModel.getVendor().getName() + ": " + currentModel.getName();
-        title.setText(dynamicTitle);
+        getChildren().filter(c -> c instanceof H3)
+                .findFirst()
+                .ifPresent(h -> ((H3) h).setText(dynamicTitle));
     }
 
     private void loadActions() {
         List<ActionResponse> actions = actionCommandService.getActionsByModel(modelId);
         grid.setItems(actions);
+    }
+
+    private void restoreButton(Button btn) {
+        btn.setEnabled(true);
+        btn.setText("Выполнить");
+        btn.setIcon(null);
     }
 
     private void executeAction(ActionResponse action) {
@@ -156,130 +162,32 @@ public class FirewallActionsView extends VerticalLayout
             return;
         }
 
-        btn.setEnabled(false);
-        btn.setText("Выполняется...");
-        log.info("Кнопка переведена в состояние 'Выполняется...' для actionId={}", action.getId());
-
         ProgressBar progress = new ProgressBar();
         progress.setIndeterminate(true);
         progress.setWidth("100%");
 
-        AtomicLong seconds = new AtomicLong(0);
-        Span timer = new Span("0 сек");
-        timer.getStyle()
-                .set("font-size", "var(--lumo-font-size-s)")
-                .set("color", "var(--lumo-primary-text-color)")
-                .set("margin-top", "4px");
-
-        VerticalLayout indicator = new VerticalLayout(btn, progress, timer);
-        indicator.setPadding(false);
-        indicator.setSpacing(false);
-        indicator.setAlignItems(Alignment.CENTER);
-
-        var column = grid.getColumnByKey("execute");
-        log.info("Меняем рендерер на PROGRESS для actionId={}", action.getId());
-
-        column.setRenderer(
-                new ComponentRenderer<>(
-                        (ActionResponse item) -> {
-                            log.info("Renderer called for item {}", item.getId());
-                            if (item.getId().equals(action.getId())) {
-                                log.info("Return indicator");
-                                return indicator;
-                            }
-                            Button originalBtn = actionButtons.get(item.getId());
-                            return originalBtn != null ? originalBtn : btn;
-                        }
-                )
-        );
-        grid.getDataCommunicator().reset();
-        grid.getDataProvider().refreshAll();
-//        grid.getGenericDataView().refreshAll();
-        log.info("refreshAll() вызван (progress)");
-
-        ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
-        Runnable tick = () -> getUI().ifPresent(ui -> ui.access(() ->
-                timer.setText(seconds.incrementAndGet() + " сек")
-        ));
-        ScheduledFuture<?> timerTask = scheduler.scheduleAtFixedRate(tick, 1, 1, TimeUnit.SECONDS);
-
-        CompletableFuture.supplyAsync(() -> {
-            try {
-                return executionService.executeActionOnModel(
-                        currentModel,
-                        action.getId(),
-                        currentFirewall.getMgmtIpAddress(),
-                        "admin",
-                        "password"
-                );
-            } catch (Exception ex) {
-                throw new RuntimeException(ex);
-            }
-        }).thenAccept(results -> getUI().ifPresent(ui -> ui.access(() -> {
-            timerTask.cancel(false);
-            scheduler.shutdownNow();
+        try {
+            List<String> results = executionService.executeActionOnModel(
+                    currentModel,
+                    action.getId(),
+                    currentFirewall.getMgmtIpAddress(),
+                    "admin",
+                    "password"
+            );
+            showResultDialog(action.getName(), String.join("\n\n", results));
+        } catch (Exception e) {
+            showErrorDialog("Ошибка выполнения", e.getMessage());
+        } finally {
             btn.setEnabled(true);
             btn.setText("Выполнить");
-
-            log.info("Выполняется блок ThenAccept");
-
-            grid.getColumnByKey("execute").setRenderer(
-                    new ComponentRenderer<>(
-                            (ActionResponse item) -> {
-                                log.info("Renderer called for item {}", item.getId());
-                                Button originalBtn = actionButtons.get(item.getId());
-                                return originalBtn != null ? originalBtn : btn;
-                            }
-                    )
-            );
-
-            Notification.show("Действие успешно выполнено (" + seconds.get() + " сек)", 5000, Notification.Position.TOP_END)
-                    .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-
-            showResultDialog(action.getName(), String.join("\n\n", results));
-        }))).exceptionally(ex -> {
-            getUI().ifPresent(ui -> ui.access(() -> {
-                timerTask.cancel(false);
-                scheduler.shutdownNow();
-                btn.setEnabled(true);
-                btn.setText("Выполнить");
-
-                log.info("Выполняется блок Exceptionally");
-                var updateColumn = grid.getColumnByKey("execute");
-                log.info("Меняем рендерер обратно на BUTTONS");
-                updateColumn.setRenderer(
-                        new ComponentRenderer<>(
-                                (ActionResponse item) -> {
-                                    log.info("Renderer called for item {}", item.getId());
-                                    Button originalBtn = actionButtons.get(item.getId());
-                                    return originalBtn != null ? originalBtn : btn;
-                                }
-                        )
-                );
-                grid.getDataCommunicator().reset();
-                grid.getDataProvider().refreshAll();
-//                grid.getGenericDataView().refreshAll();
-                log.info("refreshAll() вызван (restore buttons)");
-
-                String errorMsg = ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage();
-                Notification.show("Ошибка выполнения (" + seconds.get() + " сек): " + errorMsg, 10000, Notification.Position.MIDDLE)
-                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
-
-                Dialog errorDialog = new Dialog();
-                errorDialog.setHeaderTitle("Ошибка");
-                errorDialog.add(new Span(errorMsg));
-                Button close = new Button("Закрыть", e -> errorDialog.close());
-                errorDialog.add(close);
-                errorDialog.open();
-            }));
-            return null;
-        });
+            btn.setIcon(null);
+        }
     }
-
 
     private void showResultDialog(String actionName, String result) {
         Dialog dialog = new Dialog();
         dialog.setWidth("900px");
+        dialog.setResizable(true);
         dialog.setHeight("700px");
 
         VerticalLayout content = new VerticalLayout();
@@ -296,6 +204,7 @@ public class FirewallActionsView extends VerticalLayout
                 .set("border", "1px solid #ddd");
 
         Button close = new Button("Закрыть", e -> dialog.close());
+        close.addThemeName("primary");
 
         content.add(header, text, close);
         dialog.add(content);

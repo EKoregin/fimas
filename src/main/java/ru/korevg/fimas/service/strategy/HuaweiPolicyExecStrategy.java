@@ -1,4 +1,4 @@
-package ru.korevg.fimas.service.impl;
+package ru.korevg.fimas.service.strategy;
 
 import com.jcraft.jsch.*;
 import lombok.extern.slf4j.Slf4j;
@@ -6,7 +6,6 @@ import org.springframework.stereotype.Component;
 import ru.korevg.fimas.entity.Action;
 import ru.korevg.fimas.entity.Command;
 import ru.korevg.fimas.entity.CommandType;
-import ru.korevg.fimas.service.PolicyExecStrategy;
 
 import java.io.*;
 import java.util.ArrayList;

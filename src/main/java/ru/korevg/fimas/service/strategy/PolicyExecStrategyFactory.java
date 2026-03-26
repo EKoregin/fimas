@@ -1,4 +1,4 @@
-package ru.korevg.fimas.service;
+package ru.korevg.fimas.service.strategy;
 
 import org.springframework.stereotype.Component;
 import ru.korevg.fimas.entity.Model;

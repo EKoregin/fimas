@@ -16,7 +16,7 @@ import ru.korevg.fimas.mapper.ModelMapper;
 import ru.korevg.fimas.repository.ModelRepository;
 import ru.korevg.fimas.repository.VendorRepository;
 import ru.korevg.fimas.service.ModelService;
-import ru.korevg.fimas.service.PolicyExecStrategyFactory;
+import ru.korevg.fimas.service.strategy.PolicyExecStrategyFactory;
 
 import java.util.List;
 import java.util.Optional;
