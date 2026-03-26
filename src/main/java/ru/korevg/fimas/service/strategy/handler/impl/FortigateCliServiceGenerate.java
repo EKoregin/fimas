@@ -39,7 +39,8 @@ public class FortigateCliServiceGenerate implements LocalCommandHandler {
                 config firewall service custom
                 %s
                 end
-                """.formatted(configBody);
+                Всего %s сервисов
+                """.formatted(configBody, services.size());
     }
 
     /**

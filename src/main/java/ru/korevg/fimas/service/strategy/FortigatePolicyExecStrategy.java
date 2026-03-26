@@ -1,7 +1,6 @@
 package ru.korevg.fimas.service.strategy;
 
 import com.jcraft.jsch.*;
-import com.vaadin.open.App;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
@@ -15,9 +14,6 @@ import ru.korevg.fimas.service.strategy.handler.LocalCommandHandler;
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Component
