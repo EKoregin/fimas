@@ -196,6 +196,7 @@ public class FirewallActionsView extends VerticalLayout
 
         try {
             List<String> results = executionService.executeActionOnModel(
+                    fwId,
                     currentModel,
                     action.getId(),
                     currentFirewall.getMgmtIpAddress(),

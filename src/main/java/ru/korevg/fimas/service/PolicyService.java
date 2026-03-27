@@ -22,6 +22,8 @@ public interface PolicyService {
 
     List<PolicyResponse> findAll();
 
+    List<PolicyResponse> findByFirewallId(Long firewallId);
+
     Page<PolicyResponse> findByFirewallId(Long firewallId, Pageable pageable);
 
     long countByFirewallId(Long firewallId);

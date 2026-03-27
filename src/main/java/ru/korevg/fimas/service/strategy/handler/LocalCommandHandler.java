@@ -4,7 +4,7 @@ import ru.korevg.fimas.entity.Command;
 
 public interface LocalCommandHandler {
 
-    String handle(Command command);
+    String handle(Command command, Long firewallId);
     String getCommandKey();
     String getVendorKey();
 }

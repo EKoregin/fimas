@@ -168,6 +168,14 @@ public class PolicyServiceImpl implements PolicyService {
     }
 
     @Override
+    public List<PolicyResponse> findByFirewallId(Long firewallId) {
+        return policyRepository.findByFirewallId(firewallId)
+                .stream()
+                .map(policyMapper::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public Page<PolicyResponse> findByFirewallId(Long firewallId, Pageable pageable) {
         return policyRepository.findByFirewallId(firewallId, pageable)
                 .map(policyMapper::toResponse);

@@ -9,6 +9,8 @@ import ru.korevg.fimas.config.LocalCommandHandlerRegistry;
 import ru.korevg.fimas.entity.Action;
 import ru.korevg.fimas.entity.Command;
 import ru.korevg.fimas.entity.CommandType;
+import ru.korevg.fimas.entity.Firewall;
+import ru.korevg.fimas.repository.FirewallRepository;
 import ru.korevg.fimas.service.strategy.handler.LocalCommandHandler;
 
 import java.io.ByteArrayOutputStream;
@@ -27,7 +29,7 @@ public class FortigatePolicyExecStrategy implements PolicyExecStrategy {
     }
 
     @Override
-    public List<String> execute(Action action, String vendorKey, String host, int port, String username, String password) throws Exception {
+    public List<String> execute(Long firewallId, Action action, String vendorKey, String host, int port, String username, String password) throws Exception {
         List<String> results = new ArrayList<>();
 
         // Определяем, нужен ли SSH-сессия вообще
@@ -60,7 +62,7 @@ public class FortigatePolicyExecStrategy implements PolicyExecStrategy {
                         break;
 
                     case LOCAL:
-                        result = executeLocalHandler(cmd, vendorKey);
+                        result = executeLocalHandler(cmd, vendorKey, firewallId);
                         break;
 
                     default:
@@ -168,7 +170,7 @@ public class FortigatePolicyExecStrategy implements PolicyExecStrategy {
     }
 
     /** Локальный обработчик (можно расширять) */
-    private String executeLocalHandler(Command command, String vendorKey) {
+    private String executeLocalHandler(Command command, String vendorKey, Long firewallId) {
         if (vendorKey == null) {
             vendorKey = AppConstants.FORTIGATE;
         }
@@ -181,7 +183,7 @@ public class FortigatePolicyExecStrategy implements PolicyExecStrategy {
         }
 
         try {
-            return handler.handle(command);
+            return handler.handle(command, firewallId);
         } catch (Exception e) {
             log.error("Ошибка в обработчике {}/{}", vendorKey, command.getCommand(), e);
             return "Ошибка локального обработчика: " + e.getMessage();

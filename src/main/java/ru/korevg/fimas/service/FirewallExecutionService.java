@@ -3,6 +3,7 @@ package ru.korevg.fimas.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import ru.korevg.fimas.dto.action.ActionResponse;
+import ru.korevg.fimas.entity.Firewall;
 import ru.korevg.fimas.entity.Model;
 import ru.korevg.fimas.mapper.ActionCommandMapper;
 
@@ -16,7 +17,7 @@ public class FirewallExecutionService {
     private final ModelService modelService;
     private final ActionCommandMapper actionCommandMapper;
 
-    public List<String> executeActionOnModel(Model model, Long actionId, String host, String username, String password)
+    public List<String> executeActionOnModel(Long firewallId, Model model, Long actionId, String host, String username, String password)
             throws Exception {
 
         model = modelService.getModelWithStrategy(model);
@@ -25,7 +26,8 @@ public class FirewallExecutionService {
                 .orElseThrow(() -> new RuntimeException("Action not found"));
 
         return model.getStrategy()
-                .execute(actionCommandMapper.toEntity(actionDto),
+                .execute(firewallId,
+                        actionCommandMapper.toEntity(actionDto),
                         model.getVendor().getName(),
                         host,
                         22,

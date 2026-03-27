@@ -6,6 +6,8 @@ import org.springframework.stereotype.Component;
 import ru.korevg.fimas.entity.Action;
 import ru.korevg.fimas.entity.Command;
 import ru.korevg.fimas.entity.CommandType;
+import ru.korevg.fimas.entity.Firewall;
+import ru.korevg.fimas.repository.FirewallRepository;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -16,8 +18,14 @@ import java.util.concurrent.TimeoutException;
 @Component
 public class HuaweiPolicyExecStrategy implements PolicyExecStrategy {
 
+    private final FirewallRepository firewallRepository;
+
+    public HuaweiPolicyExecStrategy(FirewallRepository firewallRepository) {
+        this.firewallRepository = firewallRepository;
+    }
+
     @Override
-    public List<String> execute(Action action, String vendorKey, String host, int port, String username, String password) throws Exception {
+    public List<String> execute(Long firewallId, Action action, String vendorKey, String host, int port, String username, String password) throws Exception {
         List<String> results = new ArrayList<>();
 
         Session session = null;
