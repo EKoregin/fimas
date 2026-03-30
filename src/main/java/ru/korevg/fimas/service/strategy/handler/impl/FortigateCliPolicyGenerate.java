@@ -34,12 +34,6 @@ public class FortigateCliPolicyGenerate implements LocalCommandHandler {
     public String handle(Command command, Long firewallId) {
         log.info("Создание конфигурации CLI для политик Fortigate: {}", command.getName());
         var policies = policyService.findByFirewallId(firewallId);
-        // Нужно получить все политики для конкретного Firewall
-        // Из политики получить
-        // Sources
-        // Destination
-        // Services
-        // Для каждой политики создать блок конфигурации.
 
         String configBody = policies.stream()
                 .map(this::policyToEditBlock)
@@ -48,6 +42,7 @@ public class FortigateCliPolicyGenerate implements LocalCommandHandler {
         log.info("Создание конфигурации завершено");
 
         return """
+                -=Все политики по умолчанию выключены=-
                 config firewall policy
                 %s
                 end
@@ -57,8 +52,8 @@ public class FortigateCliPolicyGenerate implements LocalCommandHandler {
 
     private String policyToEditBlock(PolicyResponse policy) {
         String name = policy.name();
-        var srcaddr = policy.srcAddresses();
-        var dstaddr = policy.dstAddresses();
+        var srcAddr = policy.srcAddresses();
+        var dstAddr = policy.dstAddresses();
         String action = policy.action().name();
         var service = policy.services();
 
@@ -68,13 +63,13 @@ public class FortigateCliPolicyGenerate implements LocalCommandHandler {
         sb.append("    set name \"").append(name).append("\"\n");
         sb.append("    set srcintf \"???\"").append("\n");
         sb.append("    set dstintf \"???\"").append("\n");
-        sb.append("    set srcaddr \"")
-                .append(srcaddr.isEmpty() ? "all" : srcaddr.stream()
+        sb.append("    set srcAddr \"")
+                .append(srcAddr.isEmpty() ? "all" : srcAddr.stream()
                         .map(AddressShortResponse::name)
                         .collect(Collectors.joining("\" \"")))
                 .append("\"\n");
-        sb.append("    set dstaddr \"")
-                .append(dstaddr.isEmpty() ? "all" : dstaddr.stream()
+        sb.append("    set dstAddr \"")
+                .append(dstAddr.isEmpty() ? "all" : dstAddr.stream()
                         .map(AddressShortResponse::name)
                         .collect(Collectors.joining("\" \"")))
                 .append("\"\n");
@@ -91,83 +86,6 @@ public class FortigateCliPolicyGenerate implements LocalCommandHandler {
         sb.append("next");
 
         return sb.toString();
-    }
-
-    /**
-     * Преобразует один Service в полноценный блок edit ... next
-     */
-    private String serviceToEditBlock(Service service) {
-        if (service.getPorts() == null || service.getPorts().isEmpty()) {
-            return """
-                    edit "%s"
-                        set protocol IP
-                    next
-                    """.formatted(service.getName());
-        }
-
-        // Собираем все TCP и UDP порты отдельно
-        List<String> tcpPorts = new ArrayList<>();
-        List<String> udpPorts = new ArrayList<>();
-
-        for (Port port : service.getPorts()) {
-            String portStr = getPortString(port); // "1883" или "2012-2015"
-
-            if (port.getProtocol() == Protocol.TCP) {
-                tcpPorts.add(portStr);
-            } else if (port.getProtocol() == Protocol.UDP) {
-                udpPorts.add(portStr);
-            } else {
-                // Для не-TCP/UDP протоколов возвращаем отдельный блок (как было раньше)
-                return buildNonTcpUdpBlock(service.getName(), port);
-            }
-        }
-
-        // Формируем основной блок
-        StringBuilder sb = new StringBuilder();
-        sb.append("edit \"").append(service.getName()).append("\"\n");
-
-        if (!tcpPorts.isEmpty()) {
-            sb.append("    set tcp-portrange ")
-                    .append(String.join(" ", tcpPorts))
-                    .append("\n");
-        }
-
-        if (!udpPorts.isEmpty()) {
-            sb.append("    set udp-portrange ")
-                    .append(String.join(" ", udpPorts))
-                    .append("\n");
-        }
-
-        sb.append("next");
-        return sb.toString();
-    }
-
-    /**
-     * Возвращает строковое представление порта (одиночный или диапазон)
-     */
-    private String getPortString(Port port) {
-        String dst = port.getDstPort();
-        if (dst == null || dst.isBlank()) {
-            return "1-65535"; // fallback
-        }
-        return dst.trim(); // уже может быть "1883" или "2012-2015"
-    }
-
-    /**
-     * Для протоколов, которые не TCP и не UDP (ICMP, GRE и т.д.)
-     */
-    private String buildNonTcpUdpBlock(String serviceName, Port port) {
-        String protocolName = switch (port.getProtocol()) {
-            case ICMP -> "ICMP";
-            case IP -> "IP";
-            default -> port.getProtocol().name();
-        };
-
-        return """
-                edit "%s"
-                    set protocol %s
-                next
-                """.formatted(serviceName, protocolName);
     }
 
     @Override

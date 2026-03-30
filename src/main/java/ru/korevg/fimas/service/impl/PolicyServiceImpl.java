@@ -16,6 +16,7 @@ import ru.korevg.fimas.service.PolicyService;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -75,31 +76,49 @@ public class PolicyServiceImpl implements PolicyService {
             policy.setServices(services);
         }
 
-        Policy saved = policyRepository.save(policy);
-        return policyMapper.toResponse(saved);
+        //=== Определение позиции ===
+        if (request.policyOrder() == null) {
+            int nextOrder = firewall.getPolicies().size();
+            policy.setPolicyOrder(nextOrder);
+        } else {
+            int desiredOrder = request.policyOrder();
+            firewall.getPolicies().stream()
+                    .filter(p -> p.getPolicyOrder() >= desiredOrder)
+                    .forEach(p-> p.setPolicyOrder(desiredOrder + 1));
+            policy.setPolicyOrder(desiredOrder);
+        }
+
+        firewall.addPolicy(policy);
+        firewallRepository.save(firewall);
+        return policyMapper.toResponse(policy);
     }
 
     @Override
     @Transactional
-    public PolicyResponse update(Long id, PolicyUpdateRequest request) {
-        Policy policy = policyRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Политика с ID " + id + " не найдена"));
+    public PolicyResponse update(Long policyId, PolicyUpdateRequest request) {
+        Firewall firewall = firewallRepository.findById(request.firewallId())
+                .orElseThrow(() -> new EntityNotFoundException("Политика с ID " + policyId + " не найдена"));
+
+        Policy policy = firewall.getPolicies().stream()
+                .filter(Objects::nonNull)
+                .filter(p -> p.getId().equals(policyId))
+                .findFirst()
+                .orElseThrow(() -> new EntityNotFoundException("Политика с ID " + policyId + " не найдена"));
+
+        Integer oldOrder = policy.getPolicyOrder();
 
         policyMapper.updateFromRequest(request, policy);
 
-        // Обновление firewall, если передан
-        if (request.firewallId() != null) {
-            Firewall newFirewall = firewallRepository.findById(request.firewallId())
-                    .orElseThrow(() -> new EntityNotFoundException("Firewall с ID " + request.firewallId() + " не найден"));
-            policy.setFirewall(newFirewall);
+        Integer newOrder = request.policyOrder();
+        if (newOrder != null && !Objects.equals(newOrder, oldOrder)) {
+            firewall.getPolicies().remove(policy);           // важно удалить именно этот экземпляр
+            firewall.addPolicyAtPosition(policy, newOrder);
         }
 
-        // Обновление source-адресов (замена всего множества)
         if (request.srcAddressIds() != null) {
             Set<Address> newSrc = new HashSet<>();
             if (!request.srcAddressIds().isEmpty()) {
-                newSrc = addressRepository.findAllById(request.srcAddressIds())
-                        .stream().collect(Collectors.toSet());
+                newSrc = new HashSet<>(addressRepository.findAllById(request.srcAddressIds()));
                 if (newSrc.size() != request.srcAddressIds().size()) {
                     throw new EntityNotFoundException("Не все source-адреса найдены");
                 }
@@ -108,12 +127,10 @@ public class PolicyServiceImpl implements PolicyService {
             policy.getSrcAddresses().addAll(newSrc);
         }
 
-        // Обновление destination-адресов
         if (request.dstAddressIds() != null) {
             Set<Address> newDst = new HashSet<>();
             if (!request.dstAddressIds().isEmpty()) {
-                newDst = addressRepository.findAllById(request.dstAddressIds())
-                        .stream().collect(Collectors.toSet());
+                newDst = new HashSet<>(addressRepository.findAllById(request.dstAddressIds()));
                 if (newDst.size() != request.dstAddressIds().size()) {
                     throw new EntityNotFoundException("Не все destination-адреса найдены");
                 }
@@ -122,12 +139,11 @@ public class PolicyServiceImpl implements PolicyService {
             policy.getDstAddresses().addAll(newDst);
         }
 
-        // Обновление сервисов
+
         if (request.serviceIds() != null) {
             Set<Service> newServices = new HashSet<>();
             if (!request.serviceIds().isEmpty()) {
-                newServices = serviceRepository.findAllById(request.serviceIds())
-                        .stream().collect(Collectors.toSet());
+                newServices = new HashSet<>(serviceRepository.findAllById(request.serviceIds()));
                 if (newServices.size() != request.serviceIds().size()) {
                     throw new EntityNotFoundException("Не все сервисы найдены");
                 }
@@ -136,8 +152,15 @@ public class PolicyServiceImpl implements PolicyService {
             policy.getServices().addAll(newServices);
         }
 
-        Policy updated = policyRepository.save(policy);
-        return policyMapper.toResponse(updated);
+        Firewall savedFirewall = firewallRepository.save(firewall);
+
+        Policy updatedPolicy = savedFirewall.getPolicies().stream()
+                .filter(Objects::nonNull)
+                .filter(p -> p.getId().equals(policyId))
+                .findFirst()
+                .orElse(policy);
+
+        return policyMapper.toResponse(updatedPolicy);
     }
 
     @Override
@@ -169,7 +192,7 @@ public class PolicyServiceImpl implements PolicyService {
 
     @Override
     public List<PolicyResponse> findByFirewallId(Long firewallId) {
-        return policyRepository.findByFirewallId(firewallId)
+        return policyRepository.findByFirewallIdOrderByPolicyOrderAsc(firewallId)
                 .stream()
                 .map(policyMapper::toResponse)
                 .collect(Collectors.toList());
@@ -177,7 +200,7 @@ public class PolicyServiceImpl implements PolicyService {
 
     @Override
     public Page<PolicyResponse> findByFirewallId(Long firewallId, Pageable pageable) {
-        return policyRepository.findByFirewallId(firewallId, pageable)
+        return policyRepository.findByFirewallIdOrderByPolicyOrderAsc(firewallId, pageable)
                 .map(policyMapper::toResponse);
     }
 
@@ -189,5 +212,10 @@ public class PolicyServiceImpl implements PolicyService {
     @Override
     public long count() {
         return policyRepository.count();
+    }
+
+    @Override
+    public List<Integer> findAllPolicyOrdersByFirewallId(Long firewallId) {
+        return policyRepository.findPolicyOrdersByFirewallId(firewallId);
     }
 }

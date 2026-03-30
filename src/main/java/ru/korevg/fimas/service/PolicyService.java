@@ -29,4 +29,6 @@ public interface PolicyService {
     long countByFirewallId(Long firewallId);
 
     long count();
+
+    List<Integer> findAllPolicyOrdersByFirewallId(Long firewallId);
 }

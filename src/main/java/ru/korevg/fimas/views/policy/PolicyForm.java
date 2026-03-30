@@ -24,6 +24,8 @@ import ru.korevg.fimas.service.AddressService;
 import ru.korevg.fimas.service.PolicyService;
 import ru.korevg.fimas.service.ServiceService;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -34,6 +36,8 @@ public class PolicyForm extends Dialog {
     private final AddressService addressService;
 
     // Поля
+    private final ComboBox<Integer> orderCombo = new ComboBox<>("Порядковый номер");
+    private final List<Integer> policyOrders;
     private final TextField name = new TextField("Имя политики");
     private final TextArea description = new TextArea("Описание");
     private final ComboBox<PolicyAction> actionCombo = new ComboBox<>("Действие");
@@ -49,10 +53,16 @@ public class PolicyForm extends Dialog {
     public PolicyForm(PolicyService policyService,
                       Long firewallId,
                       AddressService addressService,
-                      ServiceService serviceService) {
+                      ServiceService serviceService,
+                      List<Integer> policyOrders) {
         this.policyService = policyService;
         this.firewallId = firewallId;
         this.addressService = addressService;
+        this.policyOrders = policyOrders != null
+                ? new ArrayList<>(policyOrders)
+                : new ArrayList<>();
+
+        configureOrderCombo();
 
         setHeaderTitle("Политика");
         setWidth("1000px");
@@ -62,7 +72,32 @@ public class PolicyForm extends Dialog {
         add(createContent());
     }
 
+    private void configureOrderCombo() {
+        orderCombo.setLabel("Порядковый номер (не обязательно)");
+        orderCombo.setPlaceholder("Выберите или введите номер");
+        orderCombo.setWidthFull();
+        orderCombo.setAllowCustomValue(true);        // важно — разрешить ввод нового номера
+        orderCombo.setItems(policyOrders);           // ← заполняем список
+
+        // Обработчик, если пользователь ввёл своё значение (custom value)
+        orderCombo.addCustomValueSetListener(event -> {
+            try {
+                Integer customValue = Integer.parseInt(event.getDetail());
+                // Можно добавить валидацию здесь, если нужно
+                orderCombo.setValue(customValue);
+            } catch (NumberFormatException e) {
+                Notification.show("Порядковый номер должен быть целым числом",
+                        3000, Notification.Position.MIDDLE);
+                orderCombo.setValue(null);
+            }
+        });
+
+        orderCombo.setRequired(false);
+        orderCombo.setErrorMessage("Выбрать порядковый номер");
+    }
+
     private void configureComponents(AddressService addressService, ServiceService serviceService) {
+
         name.setRequired(true);
         name.setWidthFull();
 
@@ -93,7 +128,7 @@ public class PolicyForm extends Dialog {
     }
 
     private VerticalLayout createContent() {
-        FormLayout main = new FormLayout(name, description, actionCombo, statusCombo);
+        FormLayout main = new FormLayout(orderCombo, name, description, actionCombo, statusCombo);
         main.setResponsiveSteps(
                 new FormLayout.ResponsiveStep("0", 1),
                 new FormLayout.ResponsiveStep("600px", 2)
@@ -145,6 +180,7 @@ public class PolicyForm extends Dialog {
     }
 
     private void fill(PolicyResponse p) {
+        orderCombo.setValue(p.policyOrder());
         name.setValue(p.name());
         description.setValue(p.description() != null ? p.description() : "");
         actionCombo.setValue(p.action());
@@ -183,7 +219,8 @@ public class PolicyForm extends Dialog {
                         firewallId,
                         srcIds,
                         dstIds,
-                        svcIds
+                        svcIds,
+                        null
                 );
                 policyService.create(req);
             } else {
@@ -195,7 +232,8 @@ public class PolicyForm extends Dialog {
                         firewallId,
                         srcIds,
                         dstIds,
-                        svcIds
+                        svcIds,
+                        orderCombo.getValue()
                 );
                 policyService.update(current.id(), req);
             }

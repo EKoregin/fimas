@@ -17,5 +17,6 @@ public record PolicyResponse(
         String firewallName,
         Set<AddressShortResponse> srcAddresses,
         Set<AddressShortResponse> dstAddresses,
-        Set<ServiceShortResponse> services
+        Set<ServiceShortResponse> services,
+        Integer policyOrder
 ) {}

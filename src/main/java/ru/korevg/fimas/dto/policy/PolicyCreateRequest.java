@@ -28,5 +28,7 @@ public record PolicyCreateRequest(
 
         Set<Long> srcAddressIds,
         Set<Long> dstAddressIds,
-        Set<Long> serviceIds
+        Set<Long> serviceIds,
+
+        Integer policyOrder
 ) {}

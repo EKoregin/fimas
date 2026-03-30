@@ -32,6 +32,8 @@ import ru.korevg.fimas.service.ServiceService;
 import ru.korevg.fimas.views.firewall.FirewallListView;
 import ru.korevg.fimas.views.layout.MainLayout;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -47,6 +49,7 @@ public class PolicyListView extends VerticalLayout {
 
     private Long firewallId;
     private final Grid<PolicyResponse> grid = new Grid<>(PolicyResponse.class, false);
+    private List<Integer> policyOrders = new ArrayList<>();
 
     public PolicyListView(PolicyService policyService,
                           FirewallService firewallService,
@@ -104,8 +107,8 @@ public class PolicyListView extends VerticalLayout {
         grid.addThemeVariants(GridVariant.LUMO_WRAP_CELL_CONTENT);
         grid.setPageSize(20);
 
-        grid.addColumn(PolicyResponse::id)
-                .setHeader("ID")
+        grid.addColumn(PolicyResponse::policyOrder)
+                .setHeader("№")
                 .setWidth("80px")
                 .setFlexGrow(0)
                 .setAutoWidth(false);
@@ -201,6 +204,10 @@ public class PolicyListView extends VerticalLayout {
                     }
                 }
         ));
+
+        if (firewallId != null) {
+            loadPolicyOrders();
+        }
     }
 
     private Span createCountBadge(String label, int count) {
@@ -218,8 +225,10 @@ public class PolicyListView extends VerticalLayout {
                 policyService,
                 firewallId,
                 addressService,
-                serviceService
+                serviceService,
+                policyOrders
         );
+
         form.setAfterSave(this::refreshGrid);
 
         if (existing != null) {
@@ -251,6 +260,7 @@ public class PolicyListView extends VerticalLayout {
     }
 
     private void refreshGrid() {
+        loadPolicyOrders();
         grid.getDataCommunicator().setRequestedRange(0, grid.getPageSize());
         grid.getDataProvider().refreshAll();
     }
@@ -271,5 +281,16 @@ public class PolicyListView extends VerticalLayout {
                 .set("line-height", "1.4");
         div.setText(text);
         return div;
+    }
+
+    private void loadPolicyOrders() {
+        try {
+            // Лучше добавить новый метод в PolicyService
+            this.policyOrders = policyService.findAllPolicyOrdersByFirewallId(firewallId);
+        } catch (Exception e) {
+            Notification.show("Ошибка загрузки порядков политик: " + e.getMessage(),
+                    5000, Notification.Position.MIDDLE);
+            this.policyOrders = new ArrayList<>();
+        }
     }
 }
