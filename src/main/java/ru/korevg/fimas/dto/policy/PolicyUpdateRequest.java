@@ -23,5 +23,8 @@ public record PolicyUpdateRequest(
         Set<Long> dstAddressIds,
         Set<Long> serviceIds,
 
-        Integer policyOrder
+        Integer policyOrder,
+
+        Long srcZoneId,
+        Long dstZoneId
 ) {}

@@ -42,6 +42,15 @@ public class Policy {
     @Column(length = 500)
     private String description;
 
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "src_zone_id")
+    private Zone srcZone;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "dst_zone_id")
+    private Zone dstZone;
+
     @ManyToMany
     @JoinTable(
             name = "policy_src_addresses",
@@ -83,19 +92,19 @@ public class Policy {
     @Column(name = "policy_order", nullable = false)
     private Integer policyOrder;
 
-    public void addSrcAddress(Address a) {
-        srcAddresses.add(a);
-    }
-
-    public void removeSrcAddress(Address a) {
-        srcAddresses.remove(a);
-    }
-
-    public void addDstAddress(Address a) {
-        dstAddresses.add(a);
-    }
-
-    public void removeDstAddress(Address a) {
-        dstAddresses.remove(a);
-    }
+//    public void addSrcAddress(Address a) {
+//        srcAddresses.add(a);
+//    }
+//
+//    public void removeSrcAddress(Address a) {
+//        srcAddresses.remove(a);
+//    }
+//
+//    public void addDstAddress(Address a) {
+//        dstAddresses.add(a);
+//    }
+//
+//    public void removeDstAddress(Address a) {
+//        dstAddresses.remove(a);
+//    }
 }

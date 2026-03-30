@@ -1,5 +1,6 @@
 package ru.korevg.fimas.service.impl;
 
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -30,6 +31,33 @@ public class PolicyServiceImpl implements PolicyService {
     private final AddressRepository addressRepository;
     private final ServiceRepository serviceRepository;
     private final PolicyMapper policyMapper;
+    private final ZoneRepository zoneRepository;
+
+    private Zone anyZone;
+
+    @PostConstruct
+    public void init() {
+        this.anyZone = zoneRepository.getAnyZone();
+    }
+
+    private Zone getAnyZone() {
+        if (anyZone == null) {
+            anyZone = zoneRepository.getAnyZone();
+        }
+        return anyZone;
+    }
+
+    /**
+     * Основной метод для разрешения зоны (используется и в create, и в update)
+     */
+    private Zone resolveZone(Long zoneId) {
+        if (zoneId == null) {
+            return getAnyZone();
+        }
+        return zoneRepository.findById(zoneId)
+                .orElseGet(this::getAnyZone);
+    }
+
 
     @Override
     @Transactional
@@ -45,6 +73,9 @@ public class PolicyServiceImpl implements PolicyService {
 
         Policy policy = policyMapper.toEntity(request);
         policy.setFirewall(firewall);
+
+        policy.setSrcZone(resolveZone(request.srcZoneId()));
+        policy.setDstZone(resolveZone(request.dstZoneId()));
 
         // Загружаем и привязываем адреса источника
         if (request.srcAddressIds() != null && !request.srcAddressIds().isEmpty()) {
@@ -108,6 +139,9 @@ public class PolicyServiceImpl implements PolicyService {
         Integer oldOrder = policy.getPolicyOrder();
 
         policyMapper.updateFromRequest(request, policy);
+
+        policy.setSrcZone(resolveZone(request.srcZoneId()));
+        policy.setDstZone(resolveZone(request.dstZoneId()));
 
         Integer newOrder = request.policyOrder();
         if (newOrder != null && !Objects.equals(newOrder, oldOrder)) {

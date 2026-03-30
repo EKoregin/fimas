@@ -25,10 +25,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import ru.korevg.fimas.dto.RecordWithName;
 import ru.korevg.fimas.dto.policy.PolicyResponse;
+import ru.korevg.fimas.dto.zone.ZoneResponse;
 import ru.korevg.fimas.service.AddressService;
 import ru.korevg.fimas.service.FirewallService;
 import ru.korevg.fimas.service.PolicyService;
 import ru.korevg.fimas.service.ServiceService;
+import ru.korevg.fimas.service.ZoneService;
 import ru.korevg.fimas.views.firewall.FirewallListView;
 import ru.korevg.fimas.views.layout.MainLayout;
 
@@ -46,6 +48,7 @@ public class PolicyListView extends VerticalLayout {
     private final FirewallService firewallService;
     private final AddressService addressService;
     private final ServiceService serviceService;
+    private final ZoneService zoneService;
 
     private Long firewallId;
     private final Grid<PolicyResponse> grid = new Grid<>(PolicyResponse.class, false);
@@ -54,11 +57,13 @@ public class PolicyListView extends VerticalLayout {
     public PolicyListView(PolicyService policyService,
                           FirewallService firewallService,
                           AddressService addressService,
-                          ServiceService serviceService) {
+                          ServiceService serviceService,
+                          ZoneService zoneService) {
         this.policyService = policyService;
         this.firewallService = firewallService;
         this.addressService = addressService;
         this.serviceService = serviceService;
+        this.zoneService = zoneService;
 
         setSizeFull();
         addClassName("policy-list-view");
@@ -120,6 +125,22 @@ public class PolicyListView extends VerticalLayout {
                 .setWidth("180px")
                 .setFlexGrow(0)
                 .setAutoWidth(false);
+
+        grid.addColumn(new ComponentRenderer<>(
+                        policy -> createZoneCell(policy.srcZone())
+                ))
+                .setHeader("Source Zone")
+                .setFlexGrow(0)
+                .setWidth("140px")
+                .setResizable(true);
+
+        grid.addColumn(new ComponentRenderer<>(
+                        policy -> createZoneCell(policy.dstZone())
+                ))
+                .setHeader("Destination Zone")
+                .setFlexGrow(0)
+                .setWidth("140px")
+                .setResizable(true);
 
         grid.addColumn(new ComponentRenderer<>(
                         policy -> createMultilineCell(formatSet(policy.srcAddresses()))
@@ -226,6 +247,7 @@ public class PolicyListView extends VerticalLayout {
                 firewallId,
                 addressService,
                 serviceService,
+                zoneService,
                 policyOrders
         );
 
@@ -280,6 +302,29 @@ public class PolicyListView extends VerticalLayout {
                 .set("white-space", "pre-line")
                 .set("line-height", "1.4");
         div.setText(text);
+        return div;
+    }
+
+    /**
+     * Красивый рендер зоны (с учётом null → ANY)
+     */
+    private Component createZoneCell(ZoneResponse zone) {
+        Div div = new Div();
+        div.getStyle()
+                .set("white-space", "pre-line")
+                .set("line-height", "1.4")
+                .set("font-weight", zone == null || "ANY".equals(zone.name()) ? "normal" : "500");
+
+        String zoneName = (zone == null || zone.name() == null) ? "ANY" : zone.name().trim();
+        div.setText(zoneName);
+
+        // Опционально: можно добавить цветовое выделение для ANY
+        if ("ANY".equals(zoneName)) {
+            div.getStyle()
+                    .set("color", "var(--lumo-secondary-text-color)")
+                    .set("font-style", "italic");
+        }
+
         return div;
     }
 

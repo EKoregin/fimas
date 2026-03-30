@@ -13,16 +13,19 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.tabs.TabSheet;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.data.provider.Query;
 import ru.korevg.fimas.dto.address.AddressShortResponse;
 import ru.korevg.fimas.dto.policy.PolicyCreateRequest;
 import ru.korevg.fimas.dto.policy.PolicyResponse;
 import ru.korevg.fimas.dto.policy.PolicyUpdateRequest;
 import ru.korevg.fimas.dto.service.ServiceShortResponse;
+import ru.korevg.fimas.dto.zone.ZoneResponse;
 import ru.korevg.fimas.entity.PolicyAction;
 import ru.korevg.fimas.entity.PolicyStatus;
 import ru.korevg.fimas.service.AddressService;
 import ru.korevg.fimas.service.PolicyService;
 import ru.korevg.fimas.service.ServiceService;
+import ru.korevg.fimas.service.ZoneService;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,11 +37,15 @@ public class PolicyForm extends Dialog {
     private final PolicyService policyService;
     private final Long firewallId;
     private final AddressService addressService;
+    private final ZoneService zoneService;
 
     // Поля
     private final ComboBox<Integer> orderCombo = new ComboBox<>("Порядковый номер");
     private final List<Integer> policyOrders;
     private final TextField name = new TextField("Имя политики");
+    private final ComboBox<ZoneResponse> srcZoneCombo = new ComboBox<>("Source Zone");
+    private final ComboBox<ZoneResponse> dstZoneCombo = new ComboBox<>("Destination Zone");
+
     private final TextArea description = new TextArea("Описание");
     private final ComboBox<PolicyAction> actionCombo = new ComboBox<>("Действие");
     private final ComboBox<PolicyStatus> statusCombo = new ComboBox<>("Статус");
@@ -54,15 +61,19 @@ public class PolicyForm extends Dialog {
                       Long firewallId,
                       AddressService addressService,
                       ServiceService serviceService,
+                      ZoneService zoneService,
                       List<Integer> policyOrders) {
         this.policyService = policyService;
         this.firewallId = firewallId;
         this.addressService = addressService;
+        this.zoneService = zoneService;
         this.policyOrders = policyOrders != null
                 ? new ArrayList<>(policyOrders)
                 : new ArrayList<>();
 
         configureOrderCombo();
+        configureOrderCombo();
+        configureZoneCombos();
 
         setHeaderTitle("Политика");
         setWidth("1000px");
@@ -94,6 +105,30 @@ public class PolicyForm extends Dialog {
 
         orderCombo.setRequired(false);
         orderCombo.setErrorMessage("Выбрать порядковый номер");
+    }
+
+    private void configureZoneCombos() {
+        srcZoneCombo.setWidthFull();
+        dstZoneCombo.setWidthFull();
+        srcZoneCombo.setItemLabelGenerator(ZoneResponse::name);
+        dstZoneCombo.setItemLabelGenerator(ZoneResponse::name);
+
+        // Загружаем все зоны
+        List<ZoneResponse> zones = zoneService.findAll();
+        srcZoneCombo.setItems(zones);
+        dstZoneCombo.setItems(zones);
+
+        // По умолчанию ANY при создании
+        ZoneResponse anyZone = zones.stream()
+                .filter(z -> "ANY".equals(z.name()))
+                .findFirst()
+                .orElse(null);
+
+        srcZoneCombo.setValue(anyZone);
+        dstZoneCombo.setValue(anyZone);
+
+        srcZoneCombo.setRequired(false);
+        dstZoneCombo.setRequired(false);
     }
 
     private void configureComponents(AddressService addressService, ServiceService serviceService) {
@@ -128,10 +163,15 @@ public class PolicyForm extends Dialog {
     }
 
     private VerticalLayout createContent() {
-        FormLayout main = new FormLayout(orderCombo, name, description, actionCombo, statusCombo);
+        FormLayout main = new FormLayout(
+                orderCombo, name, description,
+                actionCombo, statusCombo,
+                srcZoneCombo, dstZoneCombo      // ← добавлено
+        );
+
         main.setResponsiveSteps(
                 new FormLayout.ResponsiveStep("0", 1),
-                new FormLayout.ResponsiveStep("600px", 2)
+                new FormLayout.ResponsiveStep("600px", 1)
         );
 
         TabSheet tabs = new TabSheet();
@@ -177,6 +217,13 @@ public class PolicyForm extends Dialog {
         srcCombo.clear();
         dstCombo.clear();
         svcCombo.clear();
+
+        ZoneResponse anyZone = srcZoneCombo.getDataProvider().fetch(new Query<>())
+                .filter(z -> "ANY".equals(z.name()))
+                .findFirst()
+                .orElse(null);
+        srcZoneCombo.setValue(anyZone);
+        dstZoneCombo.setValue(anyZone);
     }
 
     private void fill(PolicyResponse p) {
@@ -189,6 +236,9 @@ public class PolicyForm extends Dialog {
         srcCombo.setValue(p.srcAddresses());
         dstCombo.setValue(p.dstAddresses());
         svcCombo.setValue(p.services());
+
+        srcZoneCombo.setValue(p.srcZone());
+        dstZoneCombo.setValue(p.dstZone());
     }
 
     private void save() {
@@ -220,7 +270,9 @@ public class PolicyForm extends Dialog {
                         srcIds,
                         dstIds,
                         svcIds,
-                        null
+                        null,
+                        srcZoneCombo.getValue() != null ? srcZoneCombo.getValue().id() : null,
+                        dstZoneCombo.getValue() != null ? dstZoneCombo.getValue().id() : null
                 );
                 policyService.create(req);
             } else {
@@ -233,7 +285,9 @@ public class PolicyForm extends Dialog {
                         srcIds,
                         dstIds,
                         svcIds,
-                        orderCombo.getValue()
+                        orderCombo.getValue(),
+                        srcZoneCombo.getValue() != null ? srcZoneCombo.getValue().id() : null,
+                        dstZoneCombo.getValue() != null ? dstZoneCombo.getValue().id() : null
                 );
                 policyService.update(current.id(), req);
             }

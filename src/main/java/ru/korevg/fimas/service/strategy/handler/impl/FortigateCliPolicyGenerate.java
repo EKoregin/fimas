@@ -52,17 +52,20 @@ public class FortigateCliPolicyGenerate implements LocalCommandHandler {
 
     private String policyToEditBlock(PolicyResponse policy) {
         String name = policy.name();
+        String srcZone = policy.srcZone().name();
+        String dstZone = policy.dstZone().name();
         var srcAddr = policy.srcAddresses();
         var dstAddr = policy.dstAddresses();
         String action = policy.action().name();
         var service = policy.services();
 
+
         StringBuilder sb = new StringBuilder();
         sb.append("edit\n");
         sb.append("    set status disable\n");
         sb.append("    set name \"").append(name).append("\"\n");
-        sb.append("    set srcintf \"???\"").append("\n");
-        sb.append("    set dstintf \"???\"").append("\n");
+        sb.append("    set srcintf \"").append(srcZone).append("\"\n");
+        sb.append("    set dstintf \"").append(dstZone).append("\"\n");
         sb.append("    set srcAddr \"")
                 .append(srcAddr.isEmpty() ? "all" : srcAddr.stream()
                         .map(AddressShortResponse::name)
