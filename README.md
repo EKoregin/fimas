@@ -7,7 +7,7 @@
 2. Клонируйте репозиторий
 
 ```bash
-git clone https://github.com/твой-username/fimas.git
+git clone https://github.com/EKoregin/fimas.git
 cd fimas
 ```
 2. Выполните в папке проекта всего **одну команду**:
@@ -26,7 +26,7 @@ docker compose up -d
 
 - **Java 21** или выше
 - **Maven 3.8+**
-- **PostgreSQL 14** или выше
+- **PostgreSQL 16** или выше
 - Git
 
 ---
@@ -34,7 +34,7 @@ docker compose up -d
 ## 1. Клонирование репозитория
 
 ```bash
-git clone https://github.com/твой-username/fimas.git
+git clone https://github.com/EKoregin/fimas.git
 cd fimas
 ```
 
@@ -125,12 +125,12 @@ mvn spring-boot:run -Dspring-boot.run.profiles=local
 
 ## Возможные проблемы и решения
 
-| Проблема                          | Решение |
-|-----------------------------------|--------|
-| Порт 5432 занят                   | Убедитесь, что PostgreSQL не запущен в другом контейнере или сервисе. Можно изменить порт в команде Docker или в `application-local.yml`. |
-| Ошибка подключения к базе данных  | Проверьте правильность `url`, `username` и `password` в файле `application-local.yml`. Убедитесь, что PostgreSQL запущен. |
-| Порт 8080 занят                   | Добавьте строку `server.port=8085` (или другой свободный порт) в файл `application-local.yml`. |
-| Flyway не применяет миграции      | Убедитесь, что в `application-local.yml` присутствует:<br>`spring.flyway.enabled: true` |
-| Команда `mvn spring-boot:run` не работает | Убедитесь, что Maven установлен и добавлен в PATH. Попробуйте выполнить `mvn clean install` сначала. |
-| Java не найдена                   | Убедитесь, что Java 17 установлена и переменная `JAVA_HOME` настроена правильно. Проверьте версию командой `java -version`. |
+| Проблема                                  | Решение                                                                                                                                   |
+|-------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|
+| Порт 5432 занят                           | Убедитесь, что PostgreSQL не запущен в другом контейнере или сервисе. Можно изменить порт в команде Docker или в `application-local.yml`. |
+| Ошибка подключения к базе данных          | Проверьте правильность `url`, `username` и `password` в файле `application-local.yml`. Убедитесь, что PostgreSQL запущен.                 |
+| Порт 8085 занят                           | Добавьте строку `server.port=8080` (или другой свободный порт) в файл `application-local.yml`.                                            |
+| Flyway не применяет миграции              | Убедитесь, что в `application-local.yml` присутствует:<br>`spring.flyway.enabled: true`                                                   |
+| Команда `mvn spring-boot:run` не работает | Убедитесь, что Maven установлен и добавлен в PATH. Попробуйте выполнить `mvn clean install` сначала.                                      |
+| Java не найдена                           | Убедитесь, что Java 17 установлена и переменная `JAVA_HOME` настроена правильно. Проверьте версию командой `java -version`.               |
 
