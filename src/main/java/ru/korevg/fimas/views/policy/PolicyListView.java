@@ -84,7 +84,6 @@ public class PolicyListView extends VerticalLayout {
     protected void onAttach(AttachEvent attachEvent) {
         super.onAttach(attachEvent);
 
-        // Получаем параметр из URL
         String path = attachEvent.getUI().getInternals().getActiveViewLocation().getPath();
         String[] parts = path.split("/");
         if (parts.length >= 3 && parts[0].equals("firewalls")) {

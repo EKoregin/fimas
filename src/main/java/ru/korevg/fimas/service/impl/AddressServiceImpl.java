@@ -19,6 +19,7 @@ import ru.korevg.fimas.exception.EntityNotFoundException;
 import ru.korevg.fimas.mapper.AddressMapper;
 import ru.korevg.fimas.repository.AddressRepository;
 import ru.korevg.fimas.repository.FirewallRepository;
+import ru.korevg.fimas.repository.VendorRepository;
 import ru.korevg.fimas.service.AddressService;
 import ru.korevg.fimas.validation.InetValidator;
 
@@ -35,6 +36,7 @@ public class AddressServiceImpl implements AddressService {
     private final AddressRepository addressRepository;
     private final FirewallRepository firewallRepository;
     private final AddressMapper addressMapper;
+    private final VendorRepository vendorRepository;
 
     @Override
     @Transactional
@@ -152,12 +154,12 @@ public class AddressServiceImpl implements AddressService {
     }
 
     @Override
-    public List<AddressShortResponse> findAllShort() {
-        return addressRepository.findAllShort();
+    public List<AddressShortResponse> findAllShort(Long firewallId) {
+        return addressRepository.findShortsByFirewallId(firewallId);
     }
 
     @Override
-    public List<AddressShortResponse> findAllShort(Long firewallId) {
-        return addressRepository.findAllShort(firewallId);
+    public List<Address> findAllByFirewallId(Long firewallId) {
+        return addressRepository.findAllWithFirewall();
     }
 }

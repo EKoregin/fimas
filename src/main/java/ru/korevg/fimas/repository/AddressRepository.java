@@ -2,6 +2,7 @@ package ru.korevg.fimas.repository;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -43,7 +44,7 @@ public interface AddressRepository extends JpaRepository<Address, Long> {
     long countBySearchPattern(@Param("pattern") String pattern);
 
     @Query("SELECT new ru.korevg.fimas.dto.address.AddressShortResponse(a.id, a.name) FROM Address a")
-    List<AddressShortResponse> findAllShort();
+    List<AddressShortResponse> findShortsByFirewallId();
 
     @Query(value = """
     SELECT a.id, a.name FROM address a
@@ -56,5 +57,10 @@ public interface AddressRepository extends JpaRepository<Address, Long> {
     WHERE a.address_type = 'DYNAMIC'
       AND da.firewall_id = :firewallId
     """, nativeQuery = true)
-    List<AddressShortResponse> findAllShort(@Param("firewallId") Long firewallId);
+    List<AddressShortResponse> findShortsByFirewallId(@Param("firewallId") Long firewallId);
+
+    @EntityGraph(attributePaths = "addresses")
+    @Query("SELECT a FROM Address a LEFT JOIN FETCH TREAT(a AS DynamicAddress).firewall")
+    List<Address> findAllWithFirewall();
+
 }

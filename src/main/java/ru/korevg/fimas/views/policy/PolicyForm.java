@@ -39,7 +39,6 @@ public class PolicyForm extends Dialog {
     private final AddressService addressService;
     private final ZoneService zoneService;
 
-    // Поля
     private final ComboBox<Integer> orderCombo = new ComboBox<>("Порядковый номер");
     private final List<Integer> policyOrders;
     private final TextField name = new TextField("Имя политики");
@@ -113,12 +112,10 @@ public class PolicyForm extends Dialog {
         srcZoneCombo.setItemLabelGenerator(ZoneResponse::name);
         dstZoneCombo.setItemLabelGenerator(ZoneResponse::name);
 
-        // Загружаем все зоны
         List<ZoneResponse> zones = zoneService.findAll();
         srcZoneCombo.setItems(zones);
         dstZoneCombo.setItems(zones);
 
-        // По умолчанию ANY при создании
         ZoneResponse anyZone = zones.stream()
                 .filter(z -> "ANY".equals(z.name()))
                 .findFirst()

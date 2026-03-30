@@ -6,6 +6,7 @@ import ru.korevg.fimas.dto.address.AddressCommonCreateRequest;
 import ru.korevg.fimas.dto.address.AddressDynamicCreateRequest;
 import ru.korevg.fimas.dto.address.AddressResponse;
 import ru.korevg.fimas.dto.address.AddressShortResponse;
+import ru.korevg.fimas.entity.Address;
 
 import java.util.List;
 
@@ -23,7 +24,7 @@ public interface AddressService {
     long count();
     long count(String search);
 
-    List<AddressShortResponse> findAllShort();
-
     List<AddressShortResponse> findAllShort(Long firewallId);
+
+    List<Address> findAllByFirewallId(Long firewallId);
 }

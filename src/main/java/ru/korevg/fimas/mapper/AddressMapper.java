@@ -43,4 +43,7 @@ public interface AddressMapper {
     @Mapping(source = "firewall.id", target = "firewallId")
     @Mapping(source = "firewall.name", target = "firewallName")
     AddressResponse toDynamicResponse(DynamicAddress address);
+
+
+    AddressShortResponse toAddressShortResponse(Address address);
 }
