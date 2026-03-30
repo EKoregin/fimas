@@ -70,7 +70,7 @@ sudo apt install postgresql postgresql-contrib -y
 
 sudo -u postgres psql <<EOF
 CREATE DATABASE fimas;
-CREATE USER fimas WITH PASSWORD 'fimas123';
+CREATE USER fimas WITH PASSWORD 'fimas';
 ALTER USER fimas WITH SUPERUSER;
 GRANT ALL PRIVILEGES ON DATABASE fimas TO fimas;
 \q
