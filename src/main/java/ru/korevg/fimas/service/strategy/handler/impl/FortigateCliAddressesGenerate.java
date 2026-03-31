@@ -24,10 +24,9 @@ public class FortigateCliAddressesGenerate implements LocalCommandHandler {
     private final AddressService addressService;
 
     /**
-     * Флаг: true = пропускать IPv6 адреса (рекомендуется для FortiGate CLI в большинстве случаев)
-     *       false = обрабатывать IPv6 (если потребуется в будущем)
+     * Флаг: true = пропускать IPv6 адреса (рекомендуется)
      */
-    private static final boolean SKIP_IPV6 = true;   // ← Здесь можно переключить
+    private static final boolean SKIP_IPV6 = true;
 
     @Override
     public String handle(Command command, Long firewallId) {
@@ -55,7 +54,10 @@ public class FortigateCliAddressesGenerate implements LocalCommandHandler {
     }
 
     /**
-     * Генерирует блоки edit для отдельных адресов с поддержкой префиксов и пропуском IPv6
+     * Генерирует блоки edit для адресов с поддержкой:
+     * - subnet (IP/подсеть)
+     * - iprange (диапазон через "-")
+     * - fqdn
      */
     private String buildAddressBlocks(List<Address> addresses) {
         StringBuilder sb = new StringBuilder();
@@ -65,48 +67,41 @@ public class FortigateCliAddressesGenerate implements LocalCommandHandler {
                 String value = inet.trim();
                 if (value.isEmpty()) continue;
 
-                // === НОВАЯ ЛОГИКА: Пропуск IPv6 ===
+                // Пропуск IPv6
                 if (SKIP_IPV6 && isIPv6(value)) {
                     log.debug("Пропущен IPv6 адрес: {}", value);
                     continue;
                 }
 
-                // Разделяем адрес и префикс (например "10.20.30.0/24" или "2001:db8::/32")
-                String ipPart;
-                int prefix = 32; // по умолчанию — хост (/32)
+                String editName = value; // имя объекта = оригинальная строка
 
-                if (value.contains("/")) {
-                    String[] parts = value.split("/");
-                    ipPart = parts[0].trim();
-                    try {
-                        prefix = Integer.parseInt(parts[1].trim());
-                        if (prefix < 0 || prefix > 128) prefix = 32; // 128 — максимум для IPv6
-                    } catch (Exception e) {
-                        log.warn("Некорректный префикс в адресе '{}', используется /32", value);
-                        prefix = 32;
-                    }
-                } else {
-                    ipPart = value;
-                }
+                sb.append("    edit \"").append(editName).append("\"\n");
 
-                String subnetMask = prefixToSubnetMask(prefix);
+                if (isIPRange(value)) {
+                    String[] parts = value.split("-");
+                    String startIp = parts[0].trim();
+                    String endIp = parts[1].trim();
 
-                sb.append("    edit \"").append(value).append("\"\n");
+                    sb.append("        set type iprange\n");
+                    sb.append("        set start-ip ").append(startIp).append("\n");
+                    sb.append("        set end-ip ").append(endIp).append("\n");
 
-                if (addr.getSubType() == AddressSubType.IP) {
+                } else if (addr.getSubType() == AddressSubType.IP) {
+                    // === Обычный IP или подсеть (subnet) ===
                     if (isIPv6(value)) {
-                        // Для IPv6 в FortiGate обычно используется set ip6
                         sb.append("        set ip6 ").append(value).append("\n");
                     } else {
+                        String ipPart = value.contains("/") ? value.split("/")[0].trim() : value;
+                        String subnetMask = prefixToSubnetMask(extractPrefix(value));
                         sb.append("        set subnet ").append(ipPart).append(" ").append(subnetMask).append("\n");
                     }
-                }
-                else if (addr.getSubType() == AddressSubType.FQDN) {
+                } else if (addr.getSubType() == AddressSubType.FQDN) {
                     sb.append("        set type fqdn\n");
                     sb.append("        set fqdn \"").append(value).append("\"\n");
-                }
-                else {
+                } else {
                     // fallback
+                    String ipPart = value.contains("/") ? value.split("/")[0].trim() : value;
+                    String subnetMask = prefixToSubnetMask(extractPrefix(value));
                     sb.append("        set subnet ").append(ipPart).append(" ").append(subnetMask).append("\n");
                 }
 
@@ -117,23 +112,46 @@ public class FortigateCliAddressesGenerate implements LocalCommandHandler {
     }
 
     /**
-     * Простая проверка, является ли строка IPv6 адресом
+     * Проверяет, является ли строка диапазоном вида "start-end"
+     */
+    private boolean isIPRange(String value) {
+        if (value == null) return false;
+        return value.contains("-") && value.split("-").length == 2;
+    }
+
+    /**
+     * Простая проверка IPv6
      */
     private boolean isIPv6(String address) {
         if (address == null) return false;
         String trimmed = address.trim();
-        return trimmed.contains(":") && !trimmed.contains("."); // грубая, но надёжная эвристика
+        return trimmed.contains(":") && !trimmed.contains(".");
     }
 
     /**
-     * Преобразует CIDR prefix в subnet mask (только для IPv4)
+     * Извлекает префикс из строки (по умолчанию 32)
+     */
+    private int extractPrefix(String value) {
+        if (!value.contains("/")) return 32;
+
+        try {
+            String[] parts = value.split("/");
+            int prefix = Integer.parseInt(parts[1].trim());
+            return (prefix < 0 || prefix > 128) ? 32 : prefix;
+        } catch (Exception e) {
+            log.warn("Некорректный префикс в адресе '{}', используется /32", value);
+            return 32;
+        }
+    }
+
+    /**
+     * Преобразует CIDR prefix в subnet mask (только IPv4)
      */
     private String prefixToSubnetMask(int prefix) {
         if (prefix <= 0) return "0.0.0.0";
         if (prefix >= 32) return "255.255.255.255";
 
         long mask = 0xFFFFFFFFL << (32 - prefix);
-
         return String.format("%d.%d.%d.%d",
                 (mask >> 24) & 0xFF,
                 (mask >> 16) & 0xFF,
@@ -141,9 +159,6 @@ public class FortigateCliAddressesGenerate implements LocalCommandHandler {
                 mask & 0xFF);
     }
 
-    /**
-     * Генерирует блоки для addrgrp (без изменений)
-     */
     private String buildAddrgrpBlocks(List<Address> addresses) {
         StringBuilder sb = new StringBuilder();
 
@@ -151,7 +166,7 @@ public class FortigateCliAddressesGenerate implements LocalCommandHandler {
             String groupName = addr.getName().trim();
             if (groupName.isEmpty()) continue;
 
-            // Фильтруем IPv6 из группы, если включён пропуск
+            // Фильтруем IPv6
             Set<String> members = addr.getAddresses().stream()
                     .filter(m -> !(SKIP_IPV6 && isIPv6(m)))
                     .collect(Collectors.toSet());
@@ -181,94 +196,3 @@ public class FortigateCliAddressesGenerate implements LocalCommandHandler {
         return AppConstants.FORTIGATE;
     }
 }
-
-//package ru.korevg.fimas.service.strategy.handler.impl;
-//
-//import lombok.RequiredArgsConstructor;
-//import lombok.extern.slf4j.Slf4j;
-//import org.springframework.stereotype.Component;
-//import ru.korevg.fimas.config.AppConstants;
-//import ru.korevg.fimas.dto.address.AddressShortResponse;
-//import ru.korevg.fimas.dto.policy.PolicyResponse;
-//import ru.korevg.fimas.dto.service.ServiceShortResponse;
-//import ru.korevg.fimas.entity.Address;
-//import ru.korevg.fimas.entity.Command;
-//import ru.korevg.fimas.entity.PolicyAction;
-//import ru.korevg.fimas.service.AddressService;
-//import ru.korevg.fimas.service.PolicyService;
-//import ru.korevg.fimas.service.strategy.handler.LocalCommandHandler;
-//
-//import java.util.List;
-//import java.util.stream.Collectors;
-//
-//
-//@Slf4j
-//@Component
-//@RequiredArgsConstructor
-//public class FortigateCliAddressesGenerate implements LocalCommandHandler {
-//
-//    private final PolicyService policyService;
-//    private final AddressService addressService;
-//
-//
-//    @Override
-//    public String handle(Command command, Long firewallId) {
-//        log.info("Создание конфигурации CLI для адресов и их груп Fortigate: {}", command.getName());
-//        //1. Получаем адреса
-//        List<Address> addresses = addressService.findAllByFirewallId(firewallId);
-//
-//        //3. Создаем блок конфигурации для адресов вида
-//        // Каждый адрес содержит множество адресов.
-//        // Поле private Set<String> addresses = new HashSet<>();
-//        // Для каждого элемента этого множества создаем отдельный объект - address
-////        Для адресов у которых subType = AddressSubType.IP, блоки вида
-////        config firewall address
-////        edit "10.20.188.138"
-////        set subnet 10.20.188.138 255.255.255.255
-////        next
-//
-////        Для адресов у которых subType = AddressSubType.FQDN
-////        edit "gotomypc.com"
-////        set type fqdn
-////        set fqdn "*.gotomypc.com"
-////        next
-////        end
-//
-//        //4. Создаем группы адресов
-//        // У каждого адреса есть имя, например vl440-wifi-guest. Группа называется этим именем.
-//        // Необходим создать группу адресов для каждого объекта Address и добавить в поле member, созданные перед этим объекты
-////        config firewall addrgrp
-////        edit "wh-mgmt-group-new"
-////        set member "10.180.246.0/24" "10.178.246.0/24" "10.176.246.0/24"
-////        next
-////        edit "vl440-wifi-guest"
-////        set member "11.32.240.0/21" "11.31.240.0/21"
-////        next
-////        end
-//
-//        log.info("Создание конфигурации завершено");
-//        return "";
-//    }
-//
-//    private String addressToEditBlock(PolicyResponse policy) {
-//        StringBuilder sb = new StringBuilder();
-//        return sb.toString();
-//    }
-//
-//    private String groupToEditBlock(PolicyResponse policy) {
-//        StringBuilder sb = new StringBuilder();
-//        return sb.toString();
-//    }
-//
-//
-//
-//    @Override
-//    public String getCommandKey() {
-//        return "config firewall address";
-//    }
-//
-//    @Override
-//    public String getVendorKey() {
-//        return AppConstants.FORTIGATE;
-//    }
-//}
