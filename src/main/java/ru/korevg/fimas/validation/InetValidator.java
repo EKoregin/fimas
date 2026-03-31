@@ -4,7 +4,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import ru.korevg.fimas.entity.AddressSubType;
 
-import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.HashSet;
@@ -12,17 +11,22 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Pattern;
 
-/**
- * Сервис для валидации IP-адресов и CIDR-префиксов (IPv4 и IPv6).
- */
 @Slf4j
 @Service
 public class InetValidator {
 
-    // Регулярное выражение для базовой проверки формата
+    // === Регулярки для базовой проверки ===
     private static final Pattern IPV4_CIDR_PATTERN = Pattern.compile(
             "^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}" +
                     "(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?:/(3[0-2]|[0-9]|[12][0-9]))?$"
+    );
+
+    private static final Pattern IPV4_RANGE_PATTERN = Pattern.compile(
+            "^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}" +
+                    "(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)" +
+                    "\\s*-\\s*" +
+                    "(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}" +
+                    "(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
     );
 
     private static final Pattern IPV6_CIDR_PATTERN = Pattern.compile(
@@ -50,10 +54,7 @@ public class InetValidator {
     );
 
     /**
-     * Проверяет, является ли строка корректным IP-адресом или CIDR-префиксом (IPv4 или IPv6).
-     *
-     * @param value строка для проверки (например: "192.168.1.1", "10.0.0.0/16", "2001:db8::/32")
-     * @return true — если строка является валидным IP или CIDR, false — в противном случае
+     * Основной метод: проверяет IP, CIDR, IP-Range или FQDN.
      */
     public boolean isValidInet(String value) {
         if (value == null || value.trim().isEmpty()) {
@@ -62,42 +63,42 @@ public class InetValidator {
 
         String trimmed = value.trim();
 
-        // 1. Проверка через регулярное выражение (быстрый фильтр)
-        if (trimmed.contains(".")) {
-            if (!IPV4_CIDR_PATTERN.matcher(trimmed).matches()) {
-                return false;
-            }
-        } else if (trimmed.contains(":")) {
-            if (!IPV6_CIDR_PATTERN.matcher(trimmed).matches()) {
-                return false;
-            }
-        } else {
-            return false;
+        // 1. Проверка диапазона
+        if (trimmed.contains("-")) {
+            return isValidIPRange(trimmed);
         }
 
-        // 2. Более строгая проверка через InetAddress
-        try {
-            if (trimmed.contains("/")) {
-                // CIDR-нотация
-                String[] parts = trimmed.split("/", 2);
-                if (parts.length != 2) {
-                    return false;
-                }
+        // 2. Проверка IPv4 / CIDR
+        if (trimmed.contains(".")) {
+            return IPV4_CIDR_PATTERN.matcher(trimmed).matches() && isValidSingleInet(trimmed);
+        }
 
+        // 3. Проверка IPv6 / CIDR
+        if (trimmed.contains(":")) {
+            return IPV6_CIDR_PATTERN.matcher(trimmed).matches() && isValidSingleInet(trimmed);
+        }
+
+        return false;
+    }
+
+    /**
+     * Проверка одиночного IP или CIDR (без диапазона)
+     */
+    private boolean isValidSingleInet(String value) {
+        try {
+            if (value.contains("/")) {
+                String[] parts = value.split("/", 2);
                 String ipPart = parts[0];
-                int prefixLength = Integer.parseInt(parts[1]);
+                int prefix = Integer.parseInt(parts[1]);
 
                 InetAddress addr = InetAddress.getByName(ipPart);
-
-                // Проверка длины префикса
-                if (addr instanceof Inet6Address) {
-                    return prefixLength >= 0 && prefixLength <= 128;
+                if (addr.getAddress().length == 16) { // IPv6
+                    return prefix >= 0 && prefix <= 128;
                 } else {
-                    return prefixLength >= 0 && prefixLength <= 32;
+                    return prefix >= 0 && prefix <= 32;
                 }
             } else {
-                // Одиночный IP-адрес
-                InetAddress.getByName(trimmed);
+                InetAddress.getByName(value);
                 return true;
             }
         } catch (UnknownHostException | NumberFormatException e) {
@@ -106,17 +107,110 @@ public class InetValidator {
     }
 
     /**
-     * Проверяет строку и бросает исключение при ошибке.
-     *
-     * @param value строка для проверки
-     * @throws IllegalArgumentException если строка не является валидным IP/CIDR
+     * Новая проверка диапазона IPv4 вида "start-ip - end-ip"
+     */
+    public boolean isValidIPRange(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return false;
+        }
+
+        String trimmed = value.trim();
+
+        // Быстрая проверка формата через regex
+        if (!IPV4_RANGE_PATTERN.matcher(trimmed).matches()) {
+            return false;
+        }
+
+        try {
+            String[] parts = trimmed.split("\\s*-\\s*", 2);
+            if (parts.length != 2) return false;
+
+            String startStr = parts[0].trim();
+            String endStr = parts[1].trim();
+
+            // Проверяем, что оба конца — валидные IPv4
+            InetAddress start = InetAddress.getByName(startStr);
+            InetAddress end = InetAddress.getByName(endStr);
+
+            if (start.getAddress().length != 4 || end.getAddress().length != 4) {
+                return false; // не IPv4
+            }
+
+            // Сравниваем численно (big-endian)
+            long startLong = ipToLong(startStr);
+            long endLong = ipToLong(endStr);
+
+            return startLong <= endLong;
+
+        } catch (UnknownHostException | NumberFormatException e) {
+            return false;
+        }
+    }
+
+    /**
+     * Преобразует IPv4 в long для сравнения
+     */
+    private long ipToLong(String ip) {
+        String[] octets = ip.split("\\.");
+        long result = 0;
+        for (int i = 0; i < 4; i++) {
+            result = (result << 8) | (Integer.parseInt(octets[i]) & 0xFF);
+        }
+        return result;
+    }
+
+    /**
+     * Бросает исключение, если значение некорректно
      */
     public void validateInetOrThrow(String value) {
         if (!isValidInet(value)) {
             throw new IllegalArgumentException(
-                    "Некорректный формат IP-адреса или подсети: '" + value + "'. " +
-                            "Ожидается IPv4 (например 192.168.1.1), IPv6 или CIDR (например 10.0.0.0/16, 2001:db8::/32)"
+                    "Некорректный формат адреса: '" + value + "'. " +
+                            "Поддерживаются: IPv4, CIDR (10.0.0.0/16), диапазон (11.99.0.0-11.99.99.255), IPv6."
             );
+        }
+    }
+
+    /**
+     * Валидация набора адресов с учётом типа (IP / FQDN)
+     */
+    public void validateAddresses(Set<String> addresses, AddressSubType subType) {
+        if (addresses == null || addresses.isEmpty()) {
+            throw new IllegalArgumentException("Адреса не могут быть пустыми");
+        }
+        if (subType == null) {
+            throw new IllegalArgumentException("subType должен быть указан");
+        }
+
+        Set<String> normalizedAddresses = new HashSet<>();
+        for (String addr : addresses) {
+            if (addr == null) continue;
+            String normalized = addr.trim();
+            if (!normalized.isEmpty()) {
+                normalizedAddresses.add(normalized);
+            }
+        }
+
+        if (normalizedAddresses.isEmpty()) {
+            throw new IllegalArgumentException("После нормализации адреса пусты");
+        }
+
+        for (String normalized : normalizedAddresses) {
+            switch (subType) {
+                case IP:
+                    // Теперь сюда попадают и одиночные IP/CIDR, и диапазоны
+                    validateInetOrThrow(normalized);
+                    break;
+
+                case FQDN:
+                    if (!isValidFqdn(normalized)) {
+                        throw new IllegalArgumentException("Некорректный домен для типа FQDN: " + normalized);
+                    }
+                    break;
+
+                default:
+                    throw new IllegalArgumentException("Неизвестный тип адреса: " + subType);
+            }
         }
     }
 
@@ -154,46 +248,5 @@ public class InetValidator {
         }
 
         return !normalized.contains("..") && !normalized.startsWith(".*");
-    }
-
-    public void validateAddresses(Set<String> addresses, AddressSubType subType) {
-        if (addresses == null || addresses.isEmpty()) {
-            throw new IllegalArgumentException("Адреса не могут быть пустыми");
-        }
-
-        if (subType == null) {
-            throw new IllegalArgumentException("subType должен быть указан");
-        }
-
-        Set<String> normalizedAddresses = new HashSet<>();
-        for (String addr : addresses) {
-            if (addr == null) continue;  // Пропускаем null
-            String normalized = addr.trim().toLowerCase(Locale.ROOT);
-            if (!normalized.isEmpty()) {
-                normalizedAddresses.add(normalized);
-            }
-        }
-
-        if (normalizedAddresses.isEmpty()) {
-            throw new IllegalArgumentException("После нормализации адреса пусты");
-        }
-
-        for (String normalized : normalizedAddresses) {
-            switch (subType) {
-                case IP:
-                    validateInetOrThrow(normalized);
-                    break;
-
-                case FQDN:
-                    if (!isValidFqdn(normalized)) {
-                        throw new IllegalArgumentException(
-                                "Некорректный домен для типа FQDN: " + normalized);
-                    }
-                    break;
-
-                default:
-                    throw new IllegalArgumentException("Неизвестный тип адреса: " + subType);
-            }
-        }
     }
 }
