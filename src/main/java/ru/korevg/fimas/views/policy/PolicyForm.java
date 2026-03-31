@@ -209,8 +209,8 @@ public class PolicyForm extends Dialog {
     private void clear() {
         name.clear();
         description.clear();
-        actionCombo.clear();
-        statusCombo.clear();
+        actionCombo.setValue(PolicyAction.PERMIT);
+        statusCombo.setValue(PolicyStatus.ENABLED);
         srcCombo.clear();
         dstCombo.clear();
         svcCombo.clear();
