@@ -21,5 +21,7 @@ public record PolicyResponse(
         Set<ServiceShortResponse> services,
         Integer policyOrder,
         ZoneResponse srcZone,
-        ZoneResponse dstZone
+        ZoneResponse dstZone,
+        Boolean isLogging,
+        Boolean isNat
 ) {}

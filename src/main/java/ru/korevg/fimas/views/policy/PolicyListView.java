@@ -178,7 +178,11 @@ public class PolicyListView extends VerticalLayout {
                 .setSortable(true)
                 .setKey("action")
                 .setFlexGrow(0);
+
         grid.addColumn(PolicyResponse::status).setHeader("Status").setFlexGrow(0);
+
+        grid.addColumn(PolicyResponse::isNat).setHeader("NAT").setFlexGrow(0);
+        grid.addColumn(PolicyResponse::isLogging).setHeader("Log").setFlexGrow(0);
 
         grid.addComponentColumn(p -> {
             Button edit = new Button(VaadinIcon.EDIT.create());

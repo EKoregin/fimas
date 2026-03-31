@@ -33,5 +33,8 @@ public record PolicyCreateRequest(
         Integer policyOrder,
 
         Long srcZoneId,
-        Long dstZoneId
+        Long dstZoneId,
+
+        Boolean isLogging,
+        Boolean isNat
 ) {}

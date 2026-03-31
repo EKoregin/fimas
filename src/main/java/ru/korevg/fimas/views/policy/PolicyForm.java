@@ -2,6 +2,7 @@ package ru.korevg.fimas.views.policy;
 
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.combobox.MultiSelectComboBox;
 import com.vaadin.flow.component.dialog.Dialog;
@@ -48,6 +49,8 @@ public class PolicyForm extends Dialog {
     private final TextArea description = new TextArea("Описание");
     private final ComboBox<PolicyAction> actionCombo = new ComboBox<>("Действие");
     private final ComboBox<PolicyStatus> statusCombo = new ComboBox<>("Статус");
+    private final Checkbox isLogging = new Checkbox("LOG");
+    private final Checkbox isNat = new Checkbox("NAT");
 
     private final MultiSelectComboBox<AddressShortResponse> srcCombo = new MultiSelectComboBox<>("Source Addresses");
     private final MultiSelectComboBox<AddressShortResponse> dstCombo = new MultiSelectComboBox<>("Destination Addresses");
@@ -163,7 +166,8 @@ public class PolicyForm extends Dialog {
         FormLayout main = new FormLayout(
                 orderCombo, name, description,
                 actionCombo, statusCombo,
-                srcZoneCombo, dstZoneCombo      // ← добавлено
+                srcZoneCombo, dstZoneCombo,
+                isNat, isLogging
         );
 
         main.setResponsiveSteps(
@@ -221,6 +225,9 @@ public class PolicyForm extends Dialog {
                 .orElse(null);
         srcZoneCombo.setValue(anyZone);
         dstZoneCombo.setValue(anyZone);
+
+        isLogging.clear();
+        isNat.clear();
     }
 
     private void fill(PolicyResponse p) {
@@ -236,6 +243,8 @@ public class PolicyForm extends Dialog {
 
         srcZoneCombo.setValue(p.srcZone());
         dstZoneCombo.setValue(p.dstZone());
+        isLogging.setValue(p.isLogging());
+        isNat.setValue(p.isNat());
     }
 
     private void save() {
@@ -269,7 +278,9 @@ public class PolicyForm extends Dialog {
                         svcIds,
                         null,
                         srcZoneCombo.getValue() != null ? srcZoneCombo.getValue().id() : null,
-                        dstZoneCombo.getValue() != null ? dstZoneCombo.getValue().id() : null
+                        dstZoneCombo.getValue() != null ? dstZoneCombo.getValue().id() : null,
+                        Boolean.FALSE,
+                        Boolean.FALSE
                 );
                 policyService.create(req);
             } else {
@@ -284,7 +295,9 @@ public class PolicyForm extends Dialog {
                         svcIds,
                         orderCombo.getValue(),
                         srcZoneCombo.getValue() != null ? srcZoneCombo.getValue().id() : null,
-                        dstZoneCombo.getValue() != null ? dstZoneCombo.getValue().id() : null
+                        dstZoneCombo.getValue() != null ? dstZoneCombo.getValue().id() : null,
+                        isLogging.getValue(),
+                        isNat.getValue()
                 );
                 policyService.update(current.id(), req);
             }

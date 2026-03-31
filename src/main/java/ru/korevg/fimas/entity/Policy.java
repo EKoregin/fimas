@@ -92,6 +92,14 @@ public class Policy {
     @Column(name = "policy_order", nullable = false)
     private Integer policyOrder;
 
+    @Column(name = "is_logging", nullable = false)
+    @Builder.Default
+    private Boolean isLogging = false;
+
+    @Column(name = "is_nat", nullable = false)
+    @Builder.Default
+    private Boolean isNat = false;
+
 //    public void addSrcAddress(Address a) {
 //        srcAddresses.add(a);
 //    }

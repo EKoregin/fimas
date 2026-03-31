@@ -26,5 +26,8 @@ public record PolicyUpdateRequest(
         Integer policyOrder,
 
         Long srcZoneId,
-        Long dstZoneId
+        Long dstZoneId,
+
+        Boolean isLogging,
+        Boolean isNat
 ) {}

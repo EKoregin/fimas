@@ -85,7 +85,11 @@ public class FortigateCliPolicyGenerate implements LocalCommandHandler {
                         .map(ServiceShortResponse::name)
                         .collect(Collectors.joining("\" \"")))
                 .append("\"\n");
-        sb.append("    set logtraffic disable").append("\n");
+        sb.append("    set logtraffic ").append(policy.isLogging() ? "all" : "disable").append("\n");
+        if (policy.isNat()) {
+            sb.append("    set nat enable").append("\n");
+        }
+
         sb.append("next");
 
         return sb.toString();
