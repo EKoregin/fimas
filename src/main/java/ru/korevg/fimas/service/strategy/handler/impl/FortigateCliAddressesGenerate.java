@@ -77,7 +77,7 @@ public class FortigateCliAddressesGenerate implements LocalCommandHandler {
 
                 sb.append("    edit \"").append(editName).append("\"\n");
 
-                if (isIPRange(value)) {
+                if (isIPRange(value) && addr.getSubType() == AddressSubType.IP) {
                     String[] parts = value.split("-");
                     String startIp = parts[0].trim();
                     String endIp = parts[1].trim();
