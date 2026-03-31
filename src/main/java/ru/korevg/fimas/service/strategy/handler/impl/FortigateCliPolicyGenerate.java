@@ -61,17 +61,17 @@ public class FortigateCliPolicyGenerate implements LocalCommandHandler {
 
 
         StringBuilder sb = new StringBuilder();
-        sb.append("edit\n");
+        sb.append("edit 0\n");
         sb.append("    set status disable\n");
         sb.append("    set name \"").append(name).append("\"\n");
         sb.append("    set srcintf \"").append(srcZone).append("\"\n");
         sb.append("    set dstintf \"").append(dstZone).append("\"\n");
-        sb.append("    set srcAddr \"")
+        sb.append("    set srcaddr \"")
                 .append(srcAddr.isEmpty() ? "all" : srcAddr.stream()
                         .map(AddressShortResponse::name)
                         .collect(Collectors.joining("\" \"")))
                 .append("\"\n");
-        sb.append("    set dstAddr \"")
+        sb.append("    set dstaddr \"")
                 .append(dstAddr.isEmpty() ? "all" : dstAddr.stream()
                         .map(AddressShortResponse::name)
                         .collect(Collectors.joining("\" \"")))
