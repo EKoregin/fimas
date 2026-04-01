@@ -5,7 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 public class MovePolicyFortigateGenerate {
 
     public static void main(String[] args) {
-        System.out.println(buildMoveCommands(123, 280, 122));
+        System.out.println(buildMoveCommands(192, 206, 85));
     }
 
     private static String buildMoveCommands(int startId, int endId, int afterId) {

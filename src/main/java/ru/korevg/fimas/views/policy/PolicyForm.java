@@ -279,8 +279,8 @@ public class PolicyForm extends Dialog {
                         null,
                         srcZoneCombo.getValue() != null ? srcZoneCombo.getValue().id() : null,
                         dstZoneCombo.getValue() != null ? dstZoneCombo.getValue().id() : null,
-                        Boolean.FALSE,
-                        Boolean.FALSE
+                        isLogging.getValue(),
+                        isNat.getValue()
                 );
                 policyService.create(req);
             } else {
