@@ -12,6 +12,7 @@ import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
@@ -173,7 +174,9 @@ public class PolicyListView extends VerticalLayout {
                 .setAutoWidth(true)
                 .setResizable(true);
 
-        grid.addColumn(PolicyResponse::action)
+        grid.addColumn(new ComponentRenderer<>(
+                policy -> createActionCell(policy.action().name())
+                ))
                 .setHeader("Action")
                 .setSortable(true)
                 .setKey("action")
@@ -181,8 +184,19 @@ public class PolicyListView extends VerticalLayout {
 
         grid.addColumn(PolicyResponse::status).setHeader("Status").setFlexGrow(0);
 
-        grid.addColumn(PolicyResponse::isNat).setHeader("NAT").setFlexGrow(0);
-        grid.addColumn(PolicyResponse::isLogging).setHeader("Log").setFlexGrow(0);
+        grid.addColumn(new ComponentRenderer<>(
+                        policy -> createBooleanCell(policy.isNat(), "Enabled", "Disabled")
+                ))
+                .setHeader("NAT")
+                .setFlexGrow(0)
+                .setAutoWidth(true);
+
+        grid.addColumn(new ComponentRenderer<>(
+                        policy -> createBooleanCell(policy.isLogging(), "Enabled", "Disabled")
+                ))
+                .setHeader("LOG")
+                .setFlexGrow(0)
+                .setAutoWidth(true);
 
         grid.addComponentColumn(p -> {
             Button edit = new Button(VaadinIcon.EDIT.create());
@@ -340,5 +354,55 @@ public class PolicyListView extends VerticalLayout {
                     5000, Notification.Position.MIDDLE);
             this.policyOrders = new ArrayList<>();
         }
+    }
+
+
+    private Component createBooleanCell(Boolean value, String trueText, String falseText) {
+        boolean enabled = Boolean.TRUE.equals(value);
+
+        HorizontalLayout layout = new HorizontalLayout();
+        layout.setAlignItems(Alignment.CENTER);
+        layout.setSpacing(true);
+
+        String iconColor = enabled ? "#4CAF50" : "#F44336";
+
+        Icon icon = enabled
+                ? VaadinIcon.CHECK_CIRCLE.create()
+                : VaadinIcon.CLOSE_CIRCLE.create();
+
+        icon.setColor(iconColor);
+        icon.getStyle().set("width", "20px").set("height", "20px");
+
+        Span text = new Span(enabled ? trueText : falseText);
+        text.getStyle()
+                .set("font-weight", "500");
+
+        layout.add(icon, text);
+        return layout;
+    }
+
+    private Component createActionCell(String action) {
+        boolean isPermit = "PERMIT".equalsIgnoreCase(action != null ? action.trim() : "");
+
+        HorizontalLayout layout = new HorizontalLayout();
+        layout.setAlignItems(Alignment.CENTER);
+        layout.setSpacing(true);
+
+        Icon icon = isPermit
+                ? VaadinIcon.CHECK_CIRCLE.create()
+                : VaadinIcon.CLOSE_CIRCLE.create();
+
+        String color = isPermit ? "#4CAF50" : "#F44336";
+        icon.setColor(color);
+        icon.getStyle()
+                .set("width", "20px")
+                .set("height", "20px");
+
+        Span text = new Span(isPermit ? "PERMIT" : "DENY");
+        text.getStyle()
+                .set("font-weight", "500");
+
+        layout.add(icon, text);
+        return layout;
     }
 }
