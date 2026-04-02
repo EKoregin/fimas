@@ -4,19 +4,14 @@
 
 # Развертывание приложения с использованием Docker Compose (самый простой способ)
 1. Установите **Docker Desktop** (Windows / macOS) или Docker + Docker Compose (Linux)
-2. Клонируйте репозиторий
-
-```bash
-git clone https://github.com/EKoregin/fimas.git
-cd fimas
-```
-2. Выполните в папке проекта всего **одну команду**:
+2. Скачайте файл docker-compose.yaml
+3. Выполните в папке проекта всего **одну команду**:
 
 ```bash
 docker compose up -d
 ```
 
-3. Откройте в браузере: http://localhost:8085
+4. Откройте в браузере: http://localhost:8085
 
 Приложение и база данных запустятся автоматически.
 
