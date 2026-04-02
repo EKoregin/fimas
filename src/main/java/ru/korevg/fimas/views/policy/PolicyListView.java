@@ -374,8 +374,8 @@ public class PolicyListView extends VerticalLayout {
         icon.getStyle().set("width", "20px").set("height", "20px");
 
         Span text = new Span(enabled ? trueText : falseText);
-        text.getStyle()
-                .set("font-weight", "500");
+//        text.getStyle()
+//                .set("font-weight", "500");
 
         layout.add(icon, text);
         return layout;
@@ -399,8 +399,8 @@ public class PolicyListView extends VerticalLayout {
                 .set("height", "20px");
 
         Span text = new Span(isPermit ? "PERMIT" : "DENY");
-        text.getStyle()
-                .set("font-weight", "500");
+//        text.getStyle()
+//                .set("font-weight", "500");
 
         layout.add(icon, text);
         return layout;
