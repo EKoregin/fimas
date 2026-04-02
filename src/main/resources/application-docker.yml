@@ -1,0 +1,17 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://db-fimas:5432/fimas
+    username: ${POSTGRES_USER:postgres}
+    password: ${POSTGRES_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    show-sql: false
+  flyway:
+    enabled: true
+    url: jdbc:postgresql://db-fimas:5432/fimas
+    baseline-on-migrate: true
+
+vaadin:
+  productionMode: true
+  frontend:
+    hotdeploy: false

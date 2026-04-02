@@ -1,31 +1,31 @@
 version: '3.8'
 
 services:
-  postgres:
-    image: postgres:18
-    container_name: fimas-postgres
+  db-fimas:
+    image: postgres:18-alpine
+    container_name: db-fimas
     environment:
       POSTGRES_DB: fimas
       POSTGRES_USER: fimas
       POSTGRES_PASSWORD: fimas
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
     restart: always
 
   fimas:
-    build: .                    # собирает образ из Dockerfile
-    container_name: fimas
+#    build: .                    # собирает образ из Dockerfile
+    image: fimas:latest
+    container_name: fimas-app
     ports:
       - "8085:8085"
     environment:
       SPRING_PROFILES_ACTIVE: docker
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/fimas
       SPRING_DATASOURCE_USERNAME: fimas
       SPRING_DATASOURCE_PASSWORD: fimas
     depends_on:
-      - postgres
+      - db-fimas
     restart: unless-stopped
 
 volumes:
