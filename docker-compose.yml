@@ -12,11 +12,11 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    restart: unless-stopped
+    restart: always
 
-  app:
+  fimas:
     build: .                    # собирает образ из Dockerfile
-    container_name: fimas-app
+    container_name: fimas
     ports:
       - "8085:8085"
     environment:

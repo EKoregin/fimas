@@ -1,5 +1,7 @@
-FROM eclipse-temurin:17-jdk-alpine
-WORKDIR /app
-COPY target/*.jar app.jar
+FROM maven:4.0.0-rc-5-eclipse-temurin-21
+RUN mkdir fimas
+WORKDIR fimas
+COPY . .
+RUN mvn package -Dmaven.test.skip=true
 EXPOSE 8085
-ENTRYPOINT ["java", "-jar", "app.jar"]
+CMD ["java", "-jar", "target/fimas-0.0.1.jar"]
