@@ -4,8 +4,8 @@
 
 # Развертывание приложения с использованием Docker Compose (самый простой способ)
 1. Установите **Docker Desktop** (Windows / macOS) или Docker + Docker Compose (Linux)
-2. Скачайте файл docker-compose.yaml
-3. Выполните в папке проекта всего **одну команду**:
+2. Скачайте файл [docker-compose.yml](https://github.com/EKoregin/fimas/blob/main/docker-compose.yml)
+3. Выполните в папке с файлом всего **одну команду**:
 
 ```bash
 docker compose up -d

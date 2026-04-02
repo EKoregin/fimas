@@ -16,7 +16,7 @@ services:
 
   fimas:
 #    build: .                    # собирает образ из Dockerfile
-    image: fimas:latest
+    image: evgkoregin/fimas:latest
     container_name: fimas-app
     ports:
       - "8085:8085"
