@@ -24,4 +24,6 @@ public interface FirewallService {
     List<FirewallResponse> findAll();
 
     long count();
+
+    void copyPolicies(Long sourceFirewallId, Long targetFirewallId);
 }

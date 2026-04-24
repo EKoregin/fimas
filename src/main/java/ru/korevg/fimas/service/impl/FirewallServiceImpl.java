@@ -3,25 +3,29 @@ package ru.korevg.fimas.service.impl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.korevg.fimas.dto.firewall.FirewallCreateRequest;
 import ru.korevg.fimas.dto.firewall.FirewallResponse;
 import ru.korevg.fimas.dto.firewall.FirewallUpdateRequest;
+import ru.korevg.fimas.entity.Address;
+import ru.korevg.fimas.entity.CommonAddress;
 import ru.korevg.fimas.entity.Firewall;
 import ru.korevg.fimas.entity.Model;
+import ru.korevg.fimas.entity.Policy;
+import ru.korevg.fimas.entity.Service;
 import ru.korevg.fimas.exception.EntityExistsException;
 import ru.korevg.fimas.exception.EntityNotFoundException;
 import ru.korevg.fimas.mapper.FirewallMapper;
 import ru.korevg.fimas.repository.FirewallRepository;
 import ru.korevg.fimas.repository.ModelRepository;
+import ru.korevg.fimas.repository.PolicyRepository;
 import ru.korevg.fimas.service.FirewallService;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-@Service
+@org.springframework.stereotype.Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class FirewallServiceImpl implements FirewallService {
@@ -29,6 +33,7 @@ public class FirewallServiceImpl implements FirewallService {
     private final FirewallRepository firewallRepository;
     private final ModelRepository modelRepository;
     private final FirewallMapper firewallMapper;
+    private final PolicyRepository policyRepository;
 
     @Override
     @Transactional
@@ -97,5 +102,45 @@ public class FirewallServiceImpl implements FirewallService {
     @Override
     public long count() {
         return firewallRepository.count();
+    }
+
+    @Override
+    @Transactional
+    public void copyPolicies(Long sourceFirewallId, Long targetFirewallId) {
+        Firewall sourceFirewall = firewallRepository.findById(sourceFirewallId)
+                .orElseThrow(() -> new EntityNotFoundException("Source Firewall not found"));
+        Firewall targetFirewall = firewallRepository.findById(targetFirewallId)
+                .orElseThrow(() -> new EntityNotFoundException("Target Firewall not found"));
+
+        for (Policy sourcePolicy : sourceFirewall.getPolicies()) {
+            Policy newPolicy = Policy.builder()
+                    .name(sourcePolicy.getName())
+                    .description(sourcePolicy.getDescription())
+                    .srcZone(sourcePolicy.getSrcZone())
+                    .dstZone(sourcePolicy.getDstZone())
+                    .action(sourcePolicy.getAction())
+                    .status(sourcePolicy.getStatus())
+                    .isLogging(sourcePolicy.getIsLogging())
+                    .isNat(sourcePolicy.getIsNat())
+                    .policyOrder(sourcePolicy.getPolicyOrder())
+                    .firewall(targetFirewall)
+                    .build();
+
+            for (Address srcAddress : sourcePolicy.getSrcAddresses()) {
+                if (srcAddress instanceof CommonAddress) {
+                    newPolicy.getSrcAddresses().add(srcAddress);
+                }
+            }
+            for (Address dstAddress : sourcePolicy.getDstAddresses()) {
+                if (dstAddress instanceof CommonAddress) {
+                    newPolicy.getDstAddresses().add(dstAddress);
+                }
+            }
+            for (Service service : sourcePolicy.getServices()) {
+                newPolicy.getServices().add(service);
+            }
+
+            policyRepository.save(newPolicy);
+        }
     }
 }

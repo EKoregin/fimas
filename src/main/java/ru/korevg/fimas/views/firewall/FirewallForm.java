@@ -10,6 +10,8 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ru.korevg.fimas.dto.firewall.FirewallCreateRequest;
 import ru.korevg.fimas.dto.firewall.FirewallResponse;
 import ru.korevg.fimas.dto.firewall.FirewallUpdateRequest;
@@ -17,9 +19,13 @@ import ru.korevg.fimas.dto.model.ModelResponse;
 import ru.korevg.fimas.service.FirewallService;
 import ru.korevg.fimas.service.ModelService;
 
+import java.util.List;
+import java.util.Objects;
+
 
 public class FirewallForm extends VerticalLayout {
 
+    private static final Logger log = LoggerFactory.getLogger(FirewallForm.class);
     private final FirewallService firewallService;
     private final ModelService modelService;  // добавьте зависимость
 
@@ -28,6 +34,7 @@ public class FirewallForm extends VerticalLayout {
     private final TextArea descriptionField = new TextArea("Описание");
     private final ComboBox<ModelResponse> modelCombo = new ComboBox<>("Модель");
     private final TextArea mgmtIpAddress = new TextArea("Mgmt IP Address");
+    private final ComboBox<FirewallResponse> firewalls = new ComboBox<>("Firewalls");
 
     private FirewallResponse editing = null;
     private Runnable afterSaveCallback;
@@ -72,6 +79,7 @@ public class FirewallForm extends VerticalLayout {
         buttons.setJustifyContentMode(JustifyContentMode.END);
 
         VerticalLayout content = new VerticalLayout(form, buttons);
+
         dialog.add(content);
     }
 
@@ -111,6 +119,10 @@ public class FirewallForm extends VerticalLayout {
         }
 
         mgmtIpAddress.setValue(r.mgmtIpAddress() != null ? r.mgmtIpAddress() : "");
+
+        // Add copy policies button
+        Button copyPoliciesBtn = new Button("Скопировать политики", e -> openCopyPoliciesDialog(r.id()));
+        dialog.add(copyPoliciesBtn);
     }
 
     private void save() {
@@ -151,5 +163,45 @@ public class FirewallForm extends VerticalLayout {
         } catch (Exception e) {
             Notification.show("Ошибка: " + e.getMessage(), 5000, Notification.Position.MIDDLE);
         }
+    }
+
+    private void openCopyPoliciesDialog(Long currentFirewallId) {
+        configureFirewallCombo(currentFirewallId);
+        Dialog copyPoliciesDialog = new Dialog();
+        copyPoliciesDialog.setHeaderTitle("Выберите Firewall для копирования политик");
+        Button copyBtn = new Button("Скопировать политики", e -> copyPolicies(currentFirewallId));
+        Button okBtn = new Button("ОK", e -> copyPoliciesDialog.close());
+        Button cancelBtn = new Button("Отмена", e -> copyPoliciesDialog.close());
+        HorizontalLayout buttons = new HorizontalLayout(okBtn, cancelBtn);
+        firewalls.setWidthFull();
+        VerticalLayout content = new VerticalLayout(firewalls, copyBtn, buttons);
+        copyPoliciesDialog.add(content);
+        copyPoliciesDialog.open();
+    }
+
+    private void copyPolicies(Long targetFirewallId) {
+        if (firewalls.isEmpty()) {
+            Notification.show("Заполните обязательные поля", 3000, Notification.Position.MIDDLE);
+            return;
+        }
+        try {
+            Long sourceFirewallId = firewalls.getValue().id();
+            log.info("Копирование политик из Firewall {} в {}", sourceFirewallId, targetFirewallId);
+            firewallService.copyPolicies(sourceFirewallId, targetFirewallId);
+            Notification.show("Политики успешно скопированы", 3000, Notification.Position.TOP_CENTER);
+
+        } catch (Exception e) {
+            Notification.show("Ошибка: " + e.getMessage(), 5000, Notification.Position.MIDDLE);
+        }
+
+    }
+
+    private void configureFirewallCombo(Long currentFirewallId) {
+        firewalls.setItemLabelGenerator(FirewallResponse::name);
+        firewalls.setItems(firewallService.findAll()
+                .stream()
+                .filter(fw -> !Objects.equals(fw.id(), currentFirewallId))
+                .toList());
+        firewalls.setRequired(true);
     }
 }
