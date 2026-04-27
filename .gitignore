@@ -33,3 +33,5 @@ build/
 .vscode/
 /.mvn/
 /.gitattributes
+/.env
+/src/main/resources/application.properties

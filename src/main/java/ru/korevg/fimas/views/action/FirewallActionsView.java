@@ -18,6 +18,7 @@ import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.spring.annotation.UIScope;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import ru.korevg.fimas.dto.action.ActionResponse;
 import ru.korevg.fimas.dto.command.CommandResponse;
 import ru.korevg.fimas.entity.Firewall;
@@ -39,6 +40,13 @@ import java.util.concurrent.ConcurrentHashMap;
 @UIScope
 public class FirewallActionsView extends VerticalLayout
         implements BeforeEnterObserver, HasDynamicTitle {
+
+    @Value("${fw.username}")
+    private String username;
+
+    @Value("${fw.password}")
+    private String password;
+
 
     private final ActionCommandService actionCommandService;
     private final FirewallExecutionService executionService;
@@ -195,13 +203,14 @@ public class FirewallActionsView extends VerticalLayout
         progress.setWidth("100%");
 
         try {
+            log.info("Login: {}, Password: {}", username, password);
             List<String> results = executionService.executeActionOnModel(
                     fwId,
                     currentModel,
                     action.getId(),
                     currentFirewall.getMgmtIpAddress(),
-                    "admin",
-                    "password"
+                    username,
+                    password
             );
             showResultDialog(action.getName(), String.join("\n\n", results));
         } catch (Exception e) {

@@ -94,9 +94,7 @@
 			<artifactId>vaadin-dev</artifactId>
 			<version>25.0.6</version>
 			<optional>true</optional>
-<!--			<scope>compile</scope>-->
 		</dependency>
-		<!-- Source: https://mvnrepository.com/artifact/com.github.mwiede/jsch -->
 		<dependency>
 			<groupId>com.github.mwiede</groupId>
 			<artifactId>jsch</artifactId>
