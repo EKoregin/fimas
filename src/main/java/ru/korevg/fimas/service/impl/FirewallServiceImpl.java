@@ -1,6 +1,7 @@
 package ru.korevg.fimas.service.impl;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
@@ -9,22 +10,29 @@ import ru.korevg.fimas.dto.firewall.FirewallResponse;
 import ru.korevg.fimas.dto.firewall.FirewallUpdateRequest;
 import ru.korevg.fimas.entity.Address;
 import ru.korevg.fimas.entity.CommonAddress;
+import ru.korevg.fimas.entity.DynamicAddress;
 import ru.korevg.fimas.entity.Firewall;
 import ru.korevg.fimas.entity.Model;
 import ru.korevg.fimas.entity.Policy;
-import ru.korevg.fimas.entity.Service;
 import ru.korevg.fimas.exception.EntityExistsException;
 import ru.korevg.fimas.exception.EntityNotFoundException;
 import ru.korevg.fimas.mapper.FirewallMapper;
+import ru.korevg.fimas.repository.AddressRepository;
 import ru.korevg.fimas.repository.FirewallRepository;
 import ru.korevg.fimas.repository.ModelRepository;
 import ru.korevg.fimas.repository.PolicyRepository;
 import ru.korevg.fimas.service.FirewallService;
 
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
+import static ru.korevg.fimas.config.AppConstants.IP_PLUG;
+
+@Slf4j
 @org.springframework.stereotype.Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -34,6 +42,8 @@ public class FirewallServiceImpl implements FirewallService {
     private final ModelRepository modelRepository;
     private final FirewallMapper firewallMapper;
     private final PolicyRepository policyRepository;
+    private final AddressRepository addressRepository;
+    private final static HashMap<String, Address> fwDynamicAddr = new HashMap<>();
 
     @Override
     @Transactional
@@ -104,6 +114,7 @@ public class FirewallServiceImpl implements FirewallService {
         return firewallRepository.count();
     }
 
+
     @Override
     @Transactional
     public void copyPolicies(Long sourceFirewallId, Long targetFirewallId) {
@@ -112,35 +123,101 @@ public class FirewallServiceImpl implements FirewallService {
         Firewall targetFirewall = firewallRepository.findById(targetFirewallId)
                 .orElseThrow(() -> new EntityNotFoundException("Target Firewall not found"));
 
+        fwDynamicAddr.clear();
+        // Заполнение существующих динамических адресов для Firewall
+        targetFirewall.getDynamicAddresses().forEach(dynamicAddress -> fwDynamicAddr.put(dynamicAddress.getName(), dynamicAddress));
+
         for (Policy sourcePolicy : sourceFirewall.getPolicies()) {
-            Policy newPolicy = Policy.builder()
-                    .name(sourcePolicy.getName())
-                    .description(sourcePolicy.getDescription())
-                    .srcZone(sourcePolicy.getSrcZone())
-                    .dstZone(sourcePolicy.getDstZone())
-                    .action(sourcePolicy.getAction())
-                    .status(sourcePolicy.getStatus())
-                    .isLogging(sourcePolicy.getIsLogging())
-                    .isNat(sourcePolicy.getIsNat())
-                    .policyOrder(sourcePolicy.getPolicyOrder())
-                    .firewall(targetFirewall)
-                    .build();
+            Optional<Policy> targetPolicy = policyRepository.findByNameAndFirewallId(sourcePolicy.getName(), targetFirewallId);
 
-            for (Address srcAddress : sourcePolicy.getSrcAddresses()) {
-                if (srcAddress instanceof CommonAddress) {
-                    newPolicy.getSrcAddresses().add(srcAddress);
-                }
+            if (targetPolicy.isPresent()) {
+                Policy currentTargetPolicy = targetPolicy.get();
+                updatePolicy(sourcePolicy, currentTargetPolicy);
+                policyRepository.save(currentTargetPolicy);
+            } else {
+                Policy newPolicy = createNewPolicy(sourcePolicy, targetFirewall);
+                log.info("Create new policy: {}", newPolicy.getName());
+                policyRepository.save(newPolicy);
             }
-            for (Address dstAddress : sourcePolicy.getDstAddresses()) {
-                if (dstAddress instanceof CommonAddress) {
-                    newPolicy.getDstAddresses().add(dstAddress);
-                }
-            }
-            for (Service service : sourcePolicy.getServices()) {
-                newPolicy.getServices().add(service);
-            }
-
-            policyRepository.save(newPolicy);
         }
+    }
+
+    private void updatePolicy(Policy sourcePolicy, Policy targetPolicy) {
+        targetPolicy.setDescription(sourcePolicy.getDescription());
+        targetPolicy.setSrcZone(sourcePolicy.getSrcZone());
+        targetPolicy.setDstZone(sourcePolicy.getDstZone());
+        targetPolicy.setAction(sourcePolicy.getAction());
+        targetPolicy.setStatus(sourcePolicy.getStatus());
+        targetPolicy.setIsLogging(sourcePolicy.getIsLogging());
+        targetPolicy.setIsNat(sourcePolicy.getIsNat());
+        targetPolicy.setPolicyOrder(sourcePolicy.getPolicyOrder());
+
+        Set<Address> srcAddresses = copyAddresses(sourcePolicy.getSrcAddresses(), targetPolicy.getFirewall());
+        Set<Address> dstAddresses = copyAddresses(sourcePolicy.getDstAddresses(), targetPolicy.getFirewall());
+
+        targetPolicy.getSrcAddresses().clear();
+        targetPolicy.getSrcAddresses().addAll(srcAddresses);
+
+        targetPolicy.getDstAddresses().clear();
+        targetPolicy.getDstAddresses().addAll(dstAddresses);
+
+        targetPolicy.getServices().clear();
+        targetPolicy.getServices().addAll(sourcePolicy.getServices());
+    }
+
+    private Policy createNewPolicy(Policy sourcePolicy, Firewall targetFirewall) {
+        Policy newPolicy = Policy.builder()
+                .name(sourcePolicy.getName())
+                .description(sourcePolicy.getDescription())
+                .srcZone(sourcePolicy.getSrcZone())
+                .dstZone(sourcePolicy.getDstZone())
+                .action(sourcePolicy.getAction())
+                .status(sourcePolicy.getStatus())
+                .isLogging(sourcePolicy.getIsLogging())
+                .isNat(sourcePolicy.getIsNat())
+                .policyOrder(sourcePolicy.getPolicyOrder())
+                .firewall(targetFirewall)
+                .build();
+
+        Set<Address> srcAddresses = copyAddresses(sourcePolicy.getSrcAddresses(), targetFirewall);
+        Set<Address> dstAddresses = copyAddresses(sourcePolicy.getDstAddresses(), targetFirewall);
+
+        newPolicy.getSrcAddresses().addAll(srcAddresses);
+        newPolicy.getDstAddresses().addAll(dstAddresses);
+        newPolicy.getServices().addAll(sourcePolicy.getServices());
+
+        return newPolicy;
+    }
+
+    private Set<Address> copyAddresses(Set<Address> addresses, Firewall targetFirewall) {
+
+        Set<Address> newAddresses = new HashSet<>();
+
+        for (Address address : addresses) {
+            if (address instanceof CommonAddress) {
+                newAddresses.add(address);
+            } else {
+                if (fwDynamicAddr.containsKey(address.getName())) {
+                    newAddresses.add(fwDynamicAddr.get(address.getName()));
+                } else {
+                    DynamicAddress newDynamicAddress = createDynamicAddress(address, targetFirewall);
+                    addressRepository.save(newDynamicAddress);
+                    newAddresses.add(newDynamicAddress);
+                }
+            }
+        }
+        return newAddresses;
+    }
+
+    private DynamicAddress createDynamicAddress(Address address, Firewall targetFirewall) {
+        DynamicAddress newDynamicAddress = new DynamicAddress();
+        newDynamicAddress.setFirewall(targetFirewall);
+        newDynamicAddress.setName(address.getName());
+        newDynamicAddress.setDescription(address.getDescription());
+        newDynamicAddress.setSubType(address.getSubType());
+        newDynamicAddress.setAddressType(address.getAddressType());
+        newDynamicAddress.setAddresses(Set.of(IP_PLUG));
+        fwDynamicAddr.put(address.getName(), newDynamicAddress);
+        return newDynamicAddress;
     }
 }

@@ -121,7 +121,7 @@ public class FirewallForm extends VerticalLayout {
         mgmtIpAddress.setValue(r.mgmtIpAddress() != null ? r.mgmtIpAddress() : "");
 
         // Add copy policies button
-        Button copyPoliciesBtn = new Button("Скопировать политики", e -> openCopyPoliciesDialog(r.id()));
+        Button copyPoliciesBtn = new Button("Синхронизировать политики", e -> openCopyPoliciesDialog(r.id()));
         dialog.add(copyPoliciesBtn);
     }
 
@@ -168,8 +168,8 @@ public class FirewallForm extends VerticalLayout {
     private void openCopyPoliciesDialog(Long currentFirewallId) {
         configureFirewallCombo(currentFirewallId);
         Dialog copyPoliciesDialog = new Dialog();
-        copyPoliciesDialog.setHeaderTitle("Выберите Firewall для копирования политик");
-        Button copyBtn = new Button("Скопировать политики", e -> copyPolicies(currentFirewallId));
+        copyPoliciesDialog.setHeaderTitle("Выберите Firewall для синхронизации политик");
+        Button copyBtn = new Button("Синхронизировать политики", e -> copyPolicies(currentFirewallId));
         Button okBtn = new Button("ОK", e -> copyPoliciesDialog.close());
         Button cancelBtn = new Button("Отмена", e -> copyPoliciesDialog.close());
         HorizontalLayout buttons = new HorizontalLayout(okBtn, cancelBtn);
@@ -186,9 +186,9 @@ public class FirewallForm extends VerticalLayout {
         }
         try {
             Long sourceFirewallId = firewalls.getValue().id();
-            log.info("Копирование политик из Firewall {} в {}", sourceFirewallId, targetFirewallId);
+            log.info("Синхронизация политик из Firewall {} в {}", sourceFirewallId, targetFirewallId);
             firewallService.copyPolicies(sourceFirewallId, targetFirewallId);
-            Notification.show("Политики успешно скопированы", 3000, Notification.Position.TOP_CENTER);
+            Notification.show("Политики успешно синхронизированы", 3000, Notification.Position.TOP_CENTER);
 
         } catch (Exception e) {
             Notification.show("Ошибка: " + e.getMessage(), 5000, Notification.Position.MIDDLE);
