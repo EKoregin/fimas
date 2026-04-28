@@ -160,6 +160,6 @@ public class AddressServiceImpl implements AddressService {
 
     @Override
     public List<Address> findAllByFirewallId(Long firewallId) {
-        return addressRepository.findAllWithFirewall();
+        return addressRepository.findAllByFirewallId(firewallId);
     }
 }

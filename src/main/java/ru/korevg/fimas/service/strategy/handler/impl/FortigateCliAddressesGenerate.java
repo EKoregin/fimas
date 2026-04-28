@@ -12,7 +12,9 @@ import ru.korevg.fimas.service.PolicyService;
 import ru.korevg.fimas.service.strategy.handler.LocalCommandHandler;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -20,7 +22,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class FortigateCliAddressesGenerate implements LocalCommandHandler {
 
-    private final PolicyService policyService;
     private final AddressService addressService;
 
     /**
@@ -48,6 +49,15 @@ public class FortigateCliAddressesGenerate implements LocalCommandHandler {
         cli.append("config firewall addrgrp\n");
         cli.append(buildAddrgrpBlocks(addresses));
         cli.append("end\n");
+
+        cli.append("\nВсего адресов: ")
+                .append(addresses.size()).append("\n");
+        cli.append("Из них статических: ")
+                .append(addresses.stream().filter(a -> Objects.equals(a.getAddressType(), "COMMON")).count())
+                .append("\n");
+        cli.append("Из них динамических: ")
+                .append(addresses.stream().filter(a -> Objects.equals(a.getAddressType(), "DYNAMIC")).count())
+                .append("\n");
 
         log.info("Создание конфигурации адресов Fortigate завершено ({} адресов)", addresses.size());
         return cli.toString();

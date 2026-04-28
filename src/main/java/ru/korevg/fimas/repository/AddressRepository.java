@@ -60,6 +60,15 @@ public interface AddressRepository extends JpaRepository<Address, Long> {
     List<AddressShortResponse> findShortsByFirewallId(@Param("firewallId") Long firewallId);
 
     @EntityGraph(attributePaths = "addresses")
+    @Query("""
+            SELECT a FROM Address a
+            LEFT JOIN FETCH TREAT(a AS DynamicAddress).firewall fw
+            WHERE TYPE(a) = CommonAddress
+               OR (TYPE(a) = DynamicAddress AND fw.id = :firewallId)
+            """)
+    List<Address> findAllByFirewallId(@Param("firewallId") Long firewallId);
+
+    @EntityGraph(attributePaths = "addresses")
     @Query("SELECT a FROM Address a LEFT JOIN FETCH TREAT(a AS DynamicAddress).firewall")
     List<Address> findAllWithFirewall();
 
