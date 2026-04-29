@@ -203,7 +203,6 @@ public class FirewallActionsView extends VerticalLayout
         progress.setWidth("100%");
 
         try {
-            log.info("Login: {}, Password: {}", username, password);
             List<String> results = executionService.executeActionOnModel(
                     fwId,
                     currentModel,

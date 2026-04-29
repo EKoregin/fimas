@@ -30,7 +30,7 @@ public class FortigateCliAddressesGenerate implements LocalCommandHandler {
     private static final boolean SKIP_IPV6 = true;
 
     @Override
-    public String handle(Command command, Long firewallId) {
+    public String handle(Command command, Long firewallId, String username, String password) {
         log.info("Создание конфигурации CLI для адресов и addrgrp Fortigate: {}", command.getName());
 
         List<Address> addresses = addressService.findAllByFirewallId(firewallId);
@@ -62,6 +62,7 @@ public class FortigateCliAddressesGenerate implements LocalCommandHandler {
         log.info("Создание конфигурации адресов Fortigate завершено ({} адресов)", addresses.size());
         return cli.toString();
     }
+
 
     /**
      * Генерирует блоки edit для адресов с поддержкой:

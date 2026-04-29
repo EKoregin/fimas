@@ -31,7 +31,7 @@ public class FortigateCliPolicyGenerate implements LocalCommandHandler {
 
 
     @Override
-    public String handle(Command command, Long firewallId) {
+    public String handle(Command command, Long firewallId, String username, String password) {
         log.info("Создание конфигурации CLI для политик Fortigate: {}", command.getName());
         var policies = policyService.findByFirewallId(firewallId);
 

@@ -17,7 +17,12 @@ public class FirewallExecutionService {
     private final ModelService modelService;
     private final ActionCommandMapper actionCommandMapper;
 
-    public List<String> executeActionOnModel(Long firewallId, Model model, Long actionId, String host, String username, String password)
+    public List<String> executeActionOnModel(Long firewallId,
+                                             Model model,
+                                             Long actionId,
+                                             String host,
+                                             String username,
+                                             String password)
             throws Exception {
 
         model = modelService.getModelWithStrategy(model);

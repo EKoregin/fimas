@@ -24,7 +24,7 @@ public class FortigateCliServiceGenerate implements LocalCommandHandler {
     private final ServiceRepository serviceRepository;
 
     @Override
-    public String handle(Command command, Long firewallId) {
+    public String handle(Command command, Long firewallId, String username, String password) {
         log.info("Создание конфигурации CLI для сервисов Fortigate: {}", command.getName());
 
         List<Service> services = serviceRepository.findAllWithPorts();

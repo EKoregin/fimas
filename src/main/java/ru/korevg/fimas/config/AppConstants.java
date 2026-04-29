@@ -9,4 +9,5 @@ public final class AppConstants {
     public static final String FORTIGATE = "fortinet";
     public static final String HUAWEI = "huawei";
     public static final String IP_PLUG = "127.127.127.127/32";
+    public static final Integer SSH = 22;
 }
