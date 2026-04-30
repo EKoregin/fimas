@@ -164,78 +164,227 @@ public class FortigateCheckPolicies implements LocalCommandHandler {
 
         sb.append("<h3>Политики из базы</h3>");
         sb.append("<table style='border-collapse: collapse; width: 100%;'>");
-        sb.append("<tr style='background-color: #f0f0f0;'><th>№</th><th>Правило</th><th>Статус на FW</th></tr>");
+        sb.append("<tr style='background-color: #f0f0f0;'>")
+                .append("<th>№</th>")
+                .append("<th>Правило</th>")
+                .append("<th>Статус на FW</th>")
+                .append("</tr>");
 
         for (Policy policy : localPolicies) {
-            String status = "Отсутствует на FW";
-            String style = "color: red;";
+            RemotePolicyData remote = getRemotePolicyData(remotePolicies, policy.getName());
 
+            String status = remote != null ? remote.status() : "Отсутствует на FW";
+            String statusStyle = remote != null ? "color: green;" : "color: red;";
 
-            String remoteSrcZone = "";
-            String remoteDstZone = "";
-            String remoteAction = "";
-            List<String> remoteSrcAddr = new ArrayList<>();
-            List<String> remoteDstAddr = new ArrayList<>();
-            String localSrcZone = policy.getSrcZone().getName();
-            String localDstZone = policy.getDstZone().getName();
-            String localAction = policy.getAction().equals(PolicyAction.PERMIT) ? "accept" : "deny";
-            List<String> localSrcAddr = policy.getSrcAddresses().stream().map(Address::getName).toList();
-            List<String> localDstAddr = policy.getDstAddresses().stream().map(Address::getName).toList();
-
-            if (remotePolicies.containsKey(policy.getName())) {
-                Map<String, List<String>> remote = remotePolicies.get(policy.getName());
-                status = remote.getOrDefault("status", List.of("Enabled")).getFirst();
-                style = "color: green;";
-                remoteSrcZone = remote.get("srcintf").getFirst();
-                remoteDstZone = remote.get("dstintf").getFirst();
-                remoteAction = remote.getOrDefault("action", List.of("deny")).getFirst();
-                remoteSrcAddr = remote.getOrDefault("srcaddr", List.of());
-                remoteDstAddr = remote.getOrDefault("dstaddr", List.of());
-            }
-
+            // Основная строка политики
             sb.append("<tr>")
                     .append("<td>").append(counter.getAndIncrement()).append("</td>")
                     .append("<td>").append(policy.getName()).append("</td>")
-                    .append("<td style='").append(style).append("'>").append(status).append("</td>")
+                    .append("<td style='").append(statusStyle).append("'>").append(status).append("</td>")
                     .append("</tr>");
-            //Проверка зон
-            sb.append("<tr>")
-                    .append("<td></td>")
-                    .append("<td style='text-align: right;'>Source Zone - ").append("Local: ").append(localSrcZone).append(" | Remote: ").append(remoteSrcZone).append("</td>")
-                    .append("<td>").append(localSrcZone.equals(remoteSrcZone) ? "OK" : "FALSE").append("</td>")
-                    .append("</tr>");
-            sb.append("<tr>")
-                    .append("<td></td>")
-                    .append("<td style='text-align: right;'>Destination Zone - ").append("Local: ").append(localDstZone).append(" | Remote: ").append(remoteDstZone).append("</td>")
-                    .append("<td>").append(localDstZone.equals(remoteDstZone) ? "OK" : "FALSE").append("</td>")
-                    .append("</tr>");
-            //Проверка Action
-            sb.append("<tr>")
-                    .append("<td></td>")
-                    .append("<td style='text-align: right;'>Action - ").append("Local: ").append(localAction).append(" | Remote: ").append(remoteAction).append("</td>")
-                    .append("<td>").append(localAction.equals(remoteAction) ? "OK" : "FALSE").append("</td>")
-                    .append("</tr>");
-            //Проверка адресов. Вывести только отличающиеся
-            List<String> finalRemoteSrcAddr = remoteSrcAddr;
-            sb.append("<tr>")
-                    .append("<td></td>")
-                    .append("<td style='text-align: right;'>Source Addr - ").append("Local: <br>Remote: ").append("</td>")
-                    .append("<td>").append(localSrcAddr.stream().filter(address -> !finalRemoteSrcAddr.contains(address)).toList()).append("<br>")
-                    .append(remoteSrcAddr.stream().filter(address -> !localSrcAddr.contains(address)).toList()).append("<br>")
-                    .append("</td>")
-                    .append("</tr>");
-            List<String> finalRemoteDstAddr = remoteDstAddr;
-            sb.append("<tr>")
-                    .append("<td></td>")
-                    .append("<td style='text-align: right;'>Destination Addr - ").append("Local: <br>Remote: ").append("</td>")
-                    .append("<td>").append(localDstAddr.stream().filter(address -> !finalRemoteDstAddr.contains(address)).toList()).append("<br>")
-                    .append(remoteDstAddr.stream().filter(address -> !localDstAddr.contains(address)).toList()).append("<br>")
-                    .append("</td>")
-                    .append("</tr>");
+
+            // Детальное сравнение (только если политика есть на удалённом FW)
+            if (remote != null) {
+                appendPolicyComparisonRows(sb, policy, remote, counter);
+            }
         }
 
         sb.append("</table>");
     }
+
+    private record RemotePolicyData(
+            String status,
+            String srcZone,
+            String dstZone,
+            String action,
+            List<String> srcAddr,
+            List<String> dstAddr
+    ) {}
+
+    private RemotePolicyData getRemotePolicyData(Map<String, Map<String, List<String>>> remotePolicies, String policyName) {
+        Map<String, List<String>> remote = remotePolicies.get(policyName);
+        if (remote == null) {
+            return null;
+        }
+
+        return new RemotePolicyData(
+                remote.getOrDefault("status", List.of("Enabled")).getFirst(),
+                getFirstOrEmpty(remote, "srcintf"),
+                getFirstOrEmpty(remote, "dstintf"),
+                getFirstOrEmpty(remote, "action"),
+                remote.getOrDefault("srcaddr", List.of()),
+                remote.getOrDefault("dstaddr", List.of())
+        );
+    }
+
+    private String getFirstOrEmpty(Map<String, List<String>> map, String key) {
+        List<String> list = map.get(key);
+        return (list != null && !list.isEmpty()) ? list.getFirst() : "";
+    }
+    // Вывод детального сравнения (зоны, action, адреса)
+    private void appendPolicyComparisonRows(StringBuilder sb,
+                                            Policy policy,
+                                            RemotePolicyData remote,
+                                            AtomicInteger counter) {
+
+        // Source Zone
+        appendComparisonRow(sb, counter, "Source Zone",
+                "Local: " + policy.getSrcZone().getName(),
+                "Remote: " + remote.srcZone(),
+                policy.getSrcZone().getName().equals(remote.srcZone()));
+
+        // Destination Zone
+        appendComparisonRow(sb, counter, "Destination Zone",
+                "Local: " + policy.getDstZone().getName(),
+                "Remote: " + remote.dstZone(),
+                policy.getDstZone().getName().equals(remote.dstZone()));
+
+        // Action
+        String localAction = policy.getAction().equals(PolicyAction.PERMIT) ? "accept" : "deny";
+        appendComparisonRow(sb, counter, "Action",
+                "Local: " + localAction,
+                "Remote: " + remote.action(),
+                localAction.equals(remote.action()));
+
+        // Source Addresses (только различия)
+        appendAddressComparisonRow(sb, counter, "Source Addr",
+                policy.getSrcAddresses().stream().map(Address::getName).toList(),
+                remote.srcAddr());
+
+        // Destination Addresses (только различия)
+        appendAddressComparisonRow(sb, counter, "Destination Addr",
+                policy.getDstAddresses().stream().map(Address::getName).toList(),
+                remote.dstAddr());
+    }
+
+    private void appendComparisonRow(StringBuilder sb,
+                                     AtomicInteger counter,
+                                     String label,
+                                     String localValue,
+                                     String remoteValue,
+                                     boolean isMatch) {
+
+        sb.append("<tr>")
+                .append("<td></td>")
+                .append("<td style='text-align: right; font-weight: bold;'>")
+                .append(label).append(" — ").append(localValue).append(" | ").append(remoteValue)
+                .append("</td>")
+                .append("<td style='color: ").append(isMatch ? "green" : "red").append(";'>")
+                .append(isMatch ? "OK" : "FALSE")
+                .append("</td>")
+                .append("</tr>");
+    }
+
+    private void appendAddressComparisonRow(StringBuilder sb,
+                                            AtomicInteger counter,
+                                            String label,
+                                            List<String> localAddrs,
+                                            List<String> remoteAddrs) {
+
+        List<String> onlyInLocal = localAddrs.stream()
+                .filter(addr -> !remoteAddrs.contains(addr))
+                .toList();
+
+        List<String> onlyInRemote = remoteAddrs.stream()
+                .filter(addr -> !localAddrs.contains(addr))
+                .toList();
+
+        if (onlyInLocal.isEmpty() && onlyInRemote.isEmpty()) {
+            return; // если адреса идентичны — не выводим строку
+        }
+
+        sb.append("<tr>")
+                .append("<td></td>")
+                .append("<td style='text-align: right; font-weight: bold;'>")
+                .append(label).append(" — Local: <br>Remote: ")
+                .append("</td>")
+                .append("<td>")
+                .append("Только в Local: ").append(onlyInLocal).append("<br>")
+                .append("Только в Remote: ").append(onlyInRemote)
+                .append("</td>")
+                .append("</tr>");
+    }
+
+
+//    private void appendLocalPoliciesTable(StringBuilder sb,
+//                                          List<Policy> localPolicies,
+//                                          Map<String, Map<String, List<String>>> remotePolicies,
+//                                          AtomicInteger counter) {
+//
+//        sb.append("<h3>Политики из базы</h3>");
+//        sb.append("<table style='border-collapse: collapse; width: 100%;'>");
+//        sb.append("<tr style='background-color: #f0f0f0;'><th>№</th><th>Правило</th><th>Статус на FW</th></tr>");
+//
+//        for (Policy policy : localPolicies) {
+//            String status = "Отсутствует на FW";
+//            String style = "color: red;";
+//
+//
+//            String remoteSrcZone = "";
+//            String remoteDstZone = "";
+//            String remoteAction = "";
+//            List<String> remoteSrcAddr = new ArrayList<>();
+//            List<String> remoteDstAddr = new ArrayList<>();
+//            String localSrcZone = policy.getSrcZone().getName();
+//            String localDstZone = policy.getDstZone().getName();
+//            String localAction = policy.getAction().equals(PolicyAction.PERMIT) ? "accept" : "deny";
+//            List<String> localSrcAddr = policy.getSrcAddresses().stream().map(Address::getName).toList();
+//            List<String> localDstAddr = policy.getDstAddresses().stream().map(Address::getName).toList();
+//
+//            if (remotePolicies.containsKey(policy.getName())) {
+//                Map<String, List<String>> remote = remotePolicies.get(policy.getName());
+//                status = remote.getOrDefault("status", List.of("Enabled")).getFirst();
+//                style = "color: green;";
+//                remoteSrcZone = remote.get("srcintf").getFirst();
+//                remoteDstZone = remote.get("dstintf").getFirst();
+//                remoteAction = remote.getOrDefault("action", List.of("deny")).getFirst();
+//                remoteSrcAddr = remote.getOrDefault("srcaddr", List.of());
+//                remoteDstAddr = remote.getOrDefault("dstaddr", List.of());
+//            }
+//
+//            sb.append("<tr>")
+//                    .append("<td>").append(counter.getAndIncrement()).append("</td>")
+//                    .append("<td>").append(policy.getName()).append("</td>")
+//                    .append("<td style='").append(style).append("'>").append(status).append("</td>")
+//                    .append("</tr>");
+//            //Проверка зон
+//            sb.append("<tr>")
+//                    .append("<td></td>")
+//                    .append("<td style='text-align: right;'>Source Zone - ").append("Local: ").append(localSrcZone).append(" | Remote: ").append(remoteSrcZone).append("</td>")
+//                    .append("<td>").append(localSrcZone.equals(remoteSrcZone) ? "OK" : "FALSE").append("</td>")
+//                    .append("</tr>");
+//            sb.append("<tr>")
+//                    .append("<td></td>")
+//                    .append("<td style='text-align: right;'>Destination Zone - ").append("Local: ").append(localDstZone).append(" | Remote: ").append(remoteDstZone).append("</td>")
+//                    .append("<td>").append(localDstZone.equals(remoteDstZone) ? "OK" : "FALSE").append("</td>")
+//                    .append("</tr>");
+//            //Проверка Action
+//            sb.append("<tr>")
+//                    .append("<td></td>")
+//                    .append("<td style='text-align: right;'>Action - ").append("Local: ").append(localAction).append(" | Remote: ").append(remoteAction).append("</td>")
+//                    .append("<td>").append(localAction.equals(remoteAction) ? "OK" : "FALSE").append("</td>")
+//                    .append("</tr>");
+//            //Проверка адресов. Вывести только отличающиеся
+//            List<String> finalRemoteSrcAddr = remoteSrcAddr;
+//            sb.append("<tr>")
+//                    .append("<td></td>")
+//                    .append("<td style='text-align: right;'>Source Addr - ").append("Local: <br>Remote: ").append("</td>")
+//                    .append("<td>").append(localSrcAddr.stream().filter(address -> !finalRemoteSrcAddr.contains(address)).toList()).append("<br>")
+//                    .append(remoteSrcAddr.stream().filter(address -> !localSrcAddr.contains(address)).toList()).append("<br>")
+//                    .append("</td>")
+//                    .append("</tr>");
+//            List<String> finalRemoteDstAddr = remoteDstAddr;
+//            sb.append("<tr>")
+//                    .append("<td></td>")
+//                    .append("<td style='text-align: right;'>Destination Addr - ").append("Local: <br>Remote: ").append("</td>")
+//                    .append("<td>").append(localDstAddr.stream().filter(address -> !finalRemoteDstAddr.contains(address)).toList()).append("<br>")
+//                    .append(remoteDstAddr.stream().filter(address -> !localDstAddr.contains(address)).toList()).append("<br>")
+//                    .append("</td>")
+//                    .append("</tr>");
+//        }
+//
+//        sb.append("</table>");
+//    }
 
     private void appendExtraPoliciesTable(StringBuilder sb,
                                           List<Policy> localPolicies,
