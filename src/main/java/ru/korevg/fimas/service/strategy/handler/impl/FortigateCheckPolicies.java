@@ -6,11 +6,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import ru.korevg.fimas.config.AppConstants;
 import ru.korevg.fimas.dto.firewall.FirewallResponse;
-import ru.korevg.fimas.dto.policy.PolicyResponse;
+import ru.korevg.fimas.entity.Address;
 import ru.korevg.fimas.entity.Command;
+import ru.korevg.fimas.entity.Policy;
+import ru.korevg.fimas.entity.PolicyAction;
 import ru.korevg.fimas.exception.EntityNotFoundException;
+import ru.korevg.fimas.repository.PolicyRepository;
 import ru.korevg.fimas.service.FirewallService;
-import ru.korevg.fimas.service.PolicyService;
 import ru.korevg.fimas.service.strategy.handler.LocalCommandHandler;
 import ru.korevg.fimas.util.SshExecutor;
 
@@ -27,7 +29,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class FortigateCheckPolicies implements LocalCommandHandler {
 
-    private final PolicyService policyService;
+    private final PolicyRepository policyRepository;
     private final FirewallService firewallService;
     private final SshExecutor sshExecutor;
 
@@ -41,7 +43,7 @@ public class FortigateCheckPolicies implements LocalCommandHandler {
         FirewallResponse firewall = firewallService.findById(firewallId)
                 .orElseThrow(() -> new EntityNotFoundException("Firewall с ID: " + firewallId + " не найден"));
 
-        List<PolicyResponse> localPolicies = policyService.findByFirewallId(firewallId);
+        List<Policy> localPolicies = policyRepository.findByFirewallId(firewallId);
 
         log.info("Проверка политик на Firewall: {}", firewall.name());
 
@@ -118,7 +120,7 @@ public class FortigateCheckPolicies implements LocalCommandHandler {
     /**
      * Основной метод построения HTML-отчёта
      */
-    private String buildComparisonHtml(List<PolicyResponse> localPolicies,
+    private String buildComparisonHtml(List<Policy> localPolicies,
                                        Map<String, Map<String, List<String>>> remotePolicies,
                                        String firewallName) {
 
@@ -129,6 +131,10 @@ public class FortigateCheckPolicies implements LocalCommandHandler {
         AtomicInteger extraDisabled = new AtomicInteger(0);
 
         sb.append("<div style='font-family: Arial, sans-serif; padding: 20px;'>");
+        sb.append("<style>");
+        sb.append("  table { border-collapse: collapse; width: 100%; }");
+        sb.append("  th, td { border: 1px solid #ccc; padding: 10px; }");
+        sb.append("</style>");
         sb.append("<h2>Сравнение политик: ").append(firewallName).append("</h2>");
         sb.append("<p><strong>Дата проверки:</strong> ")
                 .append(LocalDateTime.now().format(DATE_TIME_FORMATTER))
@@ -152,7 +158,7 @@ public class FortigateCheckPolicies implements LocalCommandHandler {
     }
 
     private void appendLocalPoliciesTable(StringBuilder sb,
-                                          List<PolicyResponse> localPolicies,
+                                          List<Policy> localPolicies,
                                           Map<String, Map<String, List<String>>> remotePolicies,
                                           AtomicInteger counter) {
 
@@ -160,20 +166,71 @@ public class FortigateCheckPolicies implements LocalCommandHandler {
         sb.append("<table style='border-collapse: collapse; width: 100%;'>");
         sb.append("<tr style='background-color: #f0f0f0;'><th>№</th><th>Правило</th><th>Статус на FW</th></tr>");
 
-        for (PolicyResponse policy : localPolicies) {
+        for (Policy policy : localPolicies) {
             String status = "Отсутствует на FW";
             String style = "color: red;";
 
-            if (remotePolicies.containsKey(policy.name())) {
-                Map<String, List<String>> remote = remotePolicies.get(policy.name());
-                status = remote.getOrDefault("status", List.of("Enabled")).get(0);
+
+            String remoteSrcZone = "";
+            String remoteDstZone = "";
+            String remoteAction = "";
+            List<String> remoteSrcAddr = new ArrayList<>();
+            List<String> remoteDstAddr = new ArrayList<>();
+            String localSrcZone = policy.getSrcZone().getName();
+            String localDstZone = policy.getDstZone().getName();
+            String localAction = policy.getAction().equals(PolicyAction.PERMIT) ? "accept" : "deny";
+            List<String> localSrcAddr = policy.getSrcAddresses().stream().map(Address::getName).toList();
+            List<String> localDstAddr = policy.getDstAddresses().stream().map(Address::getName).toList();
+
+            if (remotePolicies.containsKey(policy.getName())) {
+                Map<String, List<String>> remote = remotePolicies.get(policy.getName());
+                status = remote.getOrDefault("status", List.of("Enabled")).getFirst();
                 style = "color: green;";
+                remoteSrcZone = remote.get("srcintf").getFirst();
+                remoteDstZone = remote.get("dstintf").getFirst();
+                remoteAction = remote.getOrDefault("action", List.of("deny")).getFirst();
+                remoteSrcAddr = remote.getOrDefault("srcaddr", List.of());
+                remoteDstAddr = remote.getOrDefault("dstaddr", List.of());
             }
 
             sb.append("<tr>")
                     .append("<td>").append(counter.getAndIncrement()).append("</td>")
-                    .append("<td>").append(policy.name()).append("</td>")
+                    .append("<td>").append(policy.getName()).append("</td>")
                     .append("<td style='").append(style).append("'>").append(status).append("</td>")
+                    .append("</tr>");
+            //Проверка зон
+            sb.append("<tr>")
+                    .append("<td></td>")
+                    .append("<td style='text-align: right;'>Source Zone - ").append("Local: ").append(localSrcZone).append(" | Remote: ").append(remoteSrcZone).append("</td>")
+                    .append("<td>").append(localSrcZone.equals(remoteSrcZone) ? "OK" : "FALSE").append("</td>")
+                    .append("</tr>");
+            sb.append("<tr>")
+                    .append("<td></td>")
+                    .append("<td style='text-align: right;'>Destination Zone - ").append("Local: ").append(localDstZone).append(" | Remote: ").append(remoteDstZone).append("</td>")
+                    .append("<td>").append(localDstZone.equals(remoteDstZone) ? "OK" : "FALSE").append("</td>")
+                    .append("</tr>");
+            //Проверка Action
+            sb.append("<tr>")
+                    .append("<td></td>")
+                    .append("<td style='text-align: right;'>Action - ").append("Local: ").append(localAction).append(" | Remote: ").append(remoteAction).append("</td>")
+                    .append("<td>").append(localAction.equals(remoteAction) ? "OK" : "FALSE").append("</td>")
+                    .append("</tr>");
+            //Проверка адресов. Вывести только отличающиеся
+            List<String> finalRemoteSrcAddr = remoteSrcAddr;
+            sb.append("<tr>")
+                    .append("<td></td>")
+                    .append("<td style='text-align: right;'>Source Addr - ").append("Local: <br>Remote: ").append("</td>")
+                    .append("<td>").append(localSrcAddr.stream().filter(address -> !finalRemoteSrcAddr.contains(address)).toList()).append("<br>")
+                    .append(remoteSrcAddr.stream().filter(address -> !localSrcAddr.contains(address)).toList()).append("<br>")
+                    .append("</td>")
+                    .append("</tr>");
+            List<String> finalRemoteDstAddr = remoteDstAddr;
+            sb.append("<tr>")
+                    .append("<td></td>")
+                    .append("<td style='text-align: right;'>Destination Addr - ").append("Local: <br>Remote: ").append("</td>")
+                    .append("<td>").append(localDstAddr.stream().filter(address -> !finalRemoteDstAddr.contains(address)).toList()).append("<br>")
+                    .append(remoteDstAddr.stream().filter(address -> !localDstAddr.contains(address)).toList()).append("<br>")
+                    .append("</td>")
                     .append("</tr>");
         }
 
@@ -181,14 +238,14 @@ public class FortigateCheckPolicies implements LocalCommandHandler {
     }
 
     private void appendExtraPoliciesTable(StringBuilder sb,
-                                          List<PolicyResponse> localPolicies,
+                                          List<Policy> localPolicies,
                                           Map<String, Map<String, List<String>>> remotePolicies,
                                           AtomicInteger counter,
                                           AtomicInteger extraEnabled,
                                           AtomicInteger extraDisabled) {
 
         Set<String> localNames = localPolicies.stream()
-                .map(PolicyResponse::name)
+                .map(Policy::getName)
                 .collect(Collectors.toSet());
 
         sb.append("<h3>Политики, которых нет в базе, но есть на Firewall</h3>");

@@ -2,10 +2,12 @@ package ru.korevg.fimas.repository;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import ru.korevg.fimas.entity.Firewall;
 import ru.korevg.fimas.entity.Policy;
 
 import java.util.List;
@@ -18,6 +20,9 @@ public interface PolicyRepository extends JpaRepository<Policy, Long> {
 
     boolean existsByNameAndFirewallId(String name, Long firewallId);
 
+//    List<Policy> findByFirewallId(Long firewallId);
+
+    @EntityGraph(attributePaths = {"srcZone", "dstZone", "srcAddresses", "dstAddresses"})
     List<Policy> findByFirewallId(Long firewallId);
 
     Page<Policy> findByFirewallId(Long firewallId, Pageable pageable);
