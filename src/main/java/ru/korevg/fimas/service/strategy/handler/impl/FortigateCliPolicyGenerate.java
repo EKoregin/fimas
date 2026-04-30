@@ -42,11 +42,16 @@ public class FortigateCliPolicyGenerate implements LocalCommandHandler {
         log.info("Создание конфигурации завершено");
 
         return """
-                -=Все политики по умолчанию выключены=-
-                config firewall policy
+                <div>
+                <h1>config firewall policy</h1>
+                <h4>-=Все политики по умолчанию выключены=-</h4>
+                <p>
+                config firewall policy<br>
                 %s
                 end
-                Всего %s политик
+                </p>
+                <p>Всего %s политик</p>
+                </div>
                 """.formatted(configBody, policies.size());
     }
 
@@ -61,36 +66,36 @@ public class FortigateCliPolicyGenerate implements LocalCommandHandler {
 
 
         StringBuilder sb = new StringBuilder();
-        sb.append("edit 0\n");
-        sb.append("    set status disable\n");
-        sb.append("    set name \"").append(name).append("\"\n");
-        sb.append("    set srcintf \"").append(srcZone).append("\"\n");
-        sb.append("    set dstintf \"").append(dstZone).append("\"\n");
+        sb.append("edit 0<br>");
+        sb.append("    set status disable<br>");
+        sb.append("    set name \"").append(name).append("\"<br>");
+        sb.append("    set srcintf \"").append(srcZone).append("\"<br>");
+        sb.append("    set dstintf \"").append(dstZone).append("\"<br>");
         sb.append("    set srcaddr \"")
                 .append(srcAddr.isEmpty() ? "all" : srcAddr.stream()
                         .map(AddressShortResponse::name)
                         .collect(Collectors.joining("\" \"")))
-                .append("\"\n");
+                .append("\"<br>");
         sb.append("    set dstaddr \"")
                 .append(dstAddr.isEmpty() ? "all" : dstAddr.stream()
                         .map(AddressShortResponse::name)
                         .collect(Collectors.joining("\" \"")))
-                .append("\"\n");
+                .append("\"<br>");
         if(action.equals(PolicyAction.PERMIT.name())) {
-            sb.append("    set action accept").append("\n");
+            sb.append("    set action accept").append("<br>");
         }
-        sb.append("    set schedule \"always\"").append("\n");
+        sb.append("    set schedule \"always\"").append("<br>");
         sb.append("    set service \"")
                 .append(service.stream()
                         .map(ServiceShortResponse::name)
                         .collect(Collectors.joining("\" \"")))
-                .append("\"\n");
-        sb.append("    set logtraffic ").append(policy.isLogging() ? "all" : "disable").append("\n");
+                .append("\"<br>");
+        sb.append("    set logtraffic ").append(policy.isLogging() ? "all" : "disable").append("<br>");
         if (policy.isNat()) {
-            sb.append("    set nat enable").append("\n");
+            sb.append("    set nat enable").append("<br>");
         }
 
-        sb.append("next");
+        sb.append("next<br>");
 
         return sb.toString();
     }

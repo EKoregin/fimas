@@ -36,10 +36,13 @@ public class FortigateCliServiceGenerate implements LocalCommandHandler {
         log.info("Создание конфигурации завершено");
 
         return """
-                config firewall service custom
+                <div>
+                <p>
+                config firewall service custom<br>
                 %s
                 end
-                Всего %s сервисов
+                <p>
+                <p>Всего %s сервисов</p>
                 """.formatted(configBody, services.size());
     }
 
@@ -74,21 +77,21 @@ public class FortigateCliServiceGenerate implements LocalCommandHandler {
 
         // Формируем основной блок
         StringBuilder sb = new StringBuilder();
-        sb.append("edit \"").append(service.getName()).append("\"\n");
+        sb.append("edit \"").append(service.getName()).append("\"<br>");
 
         if (!tcpPorts.isEmpty()) {
             sb.append("    set tcp-portrange ")
                     .append(String.join(" ", tcpPorts))
-                    .append("\n");
+                    .append("<br>");
         }
 
         if (!udpPorts.isEmpty()) {
             sb.append("    set udp-portrange ")
                     .append(String.join(" ", udpPorts))
-                    .append("\n");
+                    .append("<br>");
         }
 
-        sb.append("next");
+        sb.append("next<br>");
         return sb.toString();
     }
 

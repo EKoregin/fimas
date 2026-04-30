@@ -14,6 +14,7 @@ import ru.korevg.fimas.service.PolicyService;
 import ru.korevg.fimas.service.strategy.handler.LocalCommandHandler;
 import ru.korevg.fimas.util.SshExecutor;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
@@ -40,7 +41,75 @@ public class FortigateCheckPolicies implements LocalCommandHandler {
         String rawPolicies = getPoliciesRemoteFW(firewallId, username, password, firewall);
         Map<String, Map<String, List<String>>> remotePolicies = policyParser(rawPolicies);
 
-        return policyVerificator(localPolicies, remotePolicies);
+        return policyVerificatorHtml(localPolicies, remotePolicies);
+    }
+
+    private String policyVerificatorHtml(List<PolicyResponse> localPolicies, Map<String, Map<String, List<String>>> remotePolicies) {
+        StringBuilder sb = new StringBuilder();
+        AtomicInteger remoteExtraEnabled = new AtomicInteger();
+        AtomicInteger remoteExtraDisabled = new AtomicInteger();
+
+        sb.append("<div>");
+        sb.append("<style>");
+        sb.append("  table { border-collapse: collapse; width: 100%; }");
+        sb.append("  th, td { border: 1px solid #ccc; padding: 10px; }");
+        sb.append("</style>");
+        sb.append("<table>");
+        sb.append("<tr><th>№</th><th>Правило</th><th>Статус</th></tr>");
+
+        AtomicInteger lineNumber = new AtomicInteger(1);
+        localPolicies.forEach(policy -> {
+            if (remotePolicies.containsKey(policy.name())) {
+                Map<String, List<String>> remotePolicy = remotePolicies.get(policy.name());
+                String status = "Enabled";
+                if (remotePolicy.containsKey("status")) {
+                    status = remotePolicy.get("status").toString();
+                }
+                sb.append("<tr>")
+                        .append("<td>").append(lineNumber.getAndIncrement()).append("</td>")
+                        .append("<td>").append(policy.name()).append("</td>")
+                        .append("<td>").append(status).append("</td>");
+            } else {
+                sb.append("<tr>")
+                        .append("<td>").append(lineNumber.getAndIncrement()).append("</td>")
+                        .append("<td>").append(policy.name()).append("</td>")
+                        .append("<td sty>").append("Политики нет на удаленном Firewall!").append("</td>");
+            }
+            sb.append("</tr>");
+        });
+        sb.append("</table>");
+
+        sb.append("<h3>Политики которых нет в БАЗЕ, но есть на FW</h3>");
+        sb.append("<table>");
+        sb.append("<tr><th>№</th><th>Правило</th><th>Статус</th></tr>");
+        Set<String> localPolicyNameSet = localPolicies.stream()
+                .map(PolicyResponse::name)
+                .collect(Collectors.toSet());
+        remotePolicies.forEach((key, value) -> {
+            if (!localPolicyNameSet.contains(key)) {
+                String status = "Enabled";
+                if (remotePolicies.get(key).containsKey("status")) {
+                    status = remotePolicies.get(key).get("status").toString();
+                }
+                if (status.equals("Enabled")) {
+                    remoteExtraEnabled.getAndIncrement();
+                } else {
+                    remoteExtraDisabled.getAndIncrement();
+                }
+                sb.append("<tr>")
+                        .append("<td>").append(lineNumber.getAndIncrement()).append("</td>")
+                        .append("<td>").append(key).append("</td>")
+                        .append("<td>").append(status).append("</td>")
+                        .append("</tr>");
+            }
+        });
+        sb.append("</table>");
+        sb.append("<p>Всего дополнительных политик: ").append(remoteExtraEnabled.get() + remoteExtraDisabled.get()).append("</p>");
+        sb.append("<p>Из них включенных: ").append(remoteExtraEnabled.get()).append("</p>");
+        sb.append("<p>Из них выключенных: ").append(remoteExtraDisabled).append("</p>");
+        sb.append("</div>");
+
+        return sb.toString();
     }
 
     private String policyVerificator(List<PolicyResponse> localPolicies, Map<String, Map<String, List<String>>> remotePolicies) {
@@ -49,22 +118,22 @@ public class FortigateCheckPolicies implements LocalCommandHandler {
         AtomicInteger remoteExtraDisabled = new AtomicInteger();
         sb.append("Проверка соответствия локальных политик").append("\n");
         localPolicies.forEach(policy -> {
-                    if (remotePolicies.containsKey(policy.name())) {
-                        Map<String, List<String>> remotePolicy = remotePolicies.get(policy.name());
-                        String status = "Enabled";
-                        if (remotePolicy.containsKey("status")) {
-                            status = remotePolicy.get("status").toString();
-                        }
-                        sb.append(policy.name())
-                                .append(" --- Remote status: ")
-                                .append(status)
-                                .append("\n");
-                    } else {
-                        sb.append(policy.name())
-                                .append("--- !!!Политики нет!!!")
-                                .append("\n");
-                    }
-                });
+            if (remotePolicies.containsKey(policy.name())) {
+                Map<String, List<String>> remotePolicy = remotePolicies.get(policy.name());
+                String status = "Enabled";
+                if (remotePolicy.containsKey("status")) {
+                    status = remotePolicy.get("status").toString();
+                }
+                sb.append(policy.name())
+                        .append(" --- Remote status: ")
+                        .append(status)
+                        .append("\n");
+            } else {
+                sb.append(policy.name())
+                        .append("--- !!!Политики нет!!!")
+                        .append("\n");
+            }
+        });
         sb.append("\n\n\nПолитики которых нет в БАЗЕ, но есть на FW\n");
         Set<String> localPolicyNameSet = localPolicies.stream()
                 .map(PolicyResponse::name)

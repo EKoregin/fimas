@@ -37,30 +37,31 @@ public class FortigateCliAddressesGenerate implements LocalCommandHandler {
 
         if (addresses.isEmpty()) {
             log.warn("Для firewallId={} не найдено ни одного адреса", firewallId);
-            return "# Нет адресов для данного firewall\n";
+            return "<h3>Нет адресов для данного firewall</h3>";
         }
 
-        StringBuilder cli = new StringBuilder();
+        StringBuilder sb = new StringBuilder();
+        sb.append("<div>");
+        sb.append("<h1>config firewall address</h1><p></p>");
+        sb.append(buildAddressBlocks(addresses));
+        sb.append("end<br><br>");
 
-        cli.append("config firewall address\n");
-        cli.append(buildAddressBlocks(addresses));
-        cli.append("end\n\n");
+        sb.append("config firewall addrgrp<br>");
+        sb.append(buildAddrgrpBlocks(addresses));
+        sb.append("end<br>");
 
-        cli.append("config firewall addrgrp\n");
-        cli.append(buildAddrgrpBlocks(addresses));
-        cli.append("end\n");
-
-        cli.append("\nВсего адресов: ")
-                .append(addresses.size()).append("\n");
-        cli.append("Из них статических: ")
+        sb.append("<p>Всего адресов: ")
+                .append(addresses.size()).append("</p>");
+        sb.append("<p>Из них статических: ")
                 .append(addresses.stream().filter(a -> Objects.equals(a.getAddressType(), "COMMON")).count())
-                .append("\n");
-        cli.append("Из них динамических: ")
+                .append("</p>");
+        sb.append("<p>Из них динамических: ")
                 .append(addresses.stream().filter(a -> Objects.equals(a.getAddressType(), "DYNAMIC")).count())
-                .append("\n");
+                .append("</p>");
 
+        sb.append("</div>");
         log.info("Создание конфигурации адресов Fortigate завершено ({} адресов)", addresses.size());
-        return cli.toString();
+        return sb.toString();
     }
 
 
@@ -86,37 +87,37 @@ public class FortigateCliAddressesGenerate implements LocalCommandHandler {
 
                 String editName = value; // имя объекта = оригинальная строка
 
-                sb.append("    edit \"").append(editName).append("\"\n");
+                sb.append("    edit \"").append(editName).append("\"<br>");
 
                 if (isIPRange(value) && addr.getSubType() == AddressSubType.IP) {
                     String[] parts = value.split("-");
                     String startIp = parts[0].trim();
                     String endIp = parts[1].trim();
 
-                    sb.append("        set type iprange\n");
-                    sb.append("        set start-ip ").append(startIp).append("\n");
-                    sb.append("        set end-ip ").append(endIp).append("\n");
+                    sb.append("        set type iprange<br>");
+                    sb.append("        set start-ip ").append(startIp).append("<br>");
+                    sb.append("        set end-ip ").append(endIp).append("<br>");
 
                 } else if (addr.getSubType() == AddressSubType.IP) {
                     // === Обычный IP или подсеть (subnet) ===
                     if (isIPv6(value)) {
-                        sb.append("        set ip6 ").append(value).append("\n");
+                        sb.append("        set ip6 ").append(value).append("<br>");
                     } else {
                         String ipPart = value.contains("/") ? value.split("/")[0].trim() : value;
                         String subnetMask = prefixToSubnetMask(extractPrefix(value));
-                        sb.append("        set subnet ").append(ipPart).append(" ").append(subnetMask).append("\n");
+                        sb.append("        set subnet ").append(ipPart).append(" ").append(subnetMask).append("<br>");
                     }
                 } else if (addr.getSubType() == AddressSubType.FQDN) {
-                    sb.append("        set type fqdn\n");
-                    sb.append("        set fqdn \"").append(value).append("\"\n");
+                    sb.append("        set type fqdn<br>");
+                    sb.append("        set fqdn \"").append(value).append("\"<br>");
                 } else {
                     // fallback
                     String ipPart = value.contains("/") ? value.split("/")[0].trim() : value;
                     String subnetMask = prefixToSubnetMask(extractPrefix(value));
-                    sb.append("        set subnet ").append(ipPart).append(" ").append(subnetMask).append("\n");
+                    sb.append("        set subnet ").append(ipPart).append(" ").append(subnetMask).append("<br>");
                 }
 
-                sb.append("    next\n");
+                sb.append("    next<br>");
             }
         }
         return sb.toString();
@@ -184,15 +185,15 @@ public class FortigateCliAddressesGenerate implements LocalCommandHandler {
 
             if (members.isEmpty()) continue;
 
-            sb.append("    edit \"").append(groupName).append("\"\n");
+            sb.append("    edit \"").append(groupName).append("\"<br>");
             sb.append("        set member ");
 
             String membersStr = members.stream()
                     .map(m -> "\"" + m.trim() + "\"")
                     .collect(Collectors.joining(" "));
 
-            sb.append(membersStr).append("\n");
-            sb.append("    next\n");
+            sb.append(membersStr).append("<br>");
+            sb.append("    next<br>");
         }
         return sb.toString();
     }

@@ -10,6 +10,7 @@ import ru.korevg.fimas.entity.Action;
 import ru.korevg.fimas.entity.Command;
 import ru.korevg.fimas.entity.CommandType;
 import ru.korevg.fimas.service.strategy.handler.LocalCommandHandler;
+import ru.korevg.fimas.util.ConsoleToHtmlConverter;
 import ru.korevg.fimas.util.SshExecutor;
 
 import java.util.ArrayList;
@@ -48,7 +49,7 @@ public class FortigatePolicyExecStrategy implements PolicyExecStrategy {
 
                 switch (cmd.getCommandType()) {
                     case SSH:
-                        result = sshExecutor.executeSshCommand(cmd.getCommand());
+                        result = ConsoleToHtmlConverter.convertToHtmlDiv(sshExecutor.executeSshCommand(cmd.getCommand()));
                         break;
 
                     case HTTPS:
@@ -65,7 +66,7 @@ public class FortigatePolicyExecStrategy implements PolicyExecStrategy {
                 }
 
                 results.add(String.format(
-                        "=== %s (%s) ===\n%s\n",
+                        "=== %s (%s) ===\n %s\n",
                         cmd.getName(),
                         cmd.getCommandType(),
                         result.trim()

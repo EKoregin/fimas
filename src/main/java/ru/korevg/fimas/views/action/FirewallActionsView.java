@@ -1,7 +1,9 @@
 
 package ru.korevg.fimas.views.action;
 
+import com.vaadin.flow.component.Html;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H3;
@@ -211,7 +213,7 @@ public class FirewallActionsView extends VerticalLayout
                     username,
                     password
             );
-            showResultDialog(action.getName(), String.join("\n\n", results));
+            showResultDialogHtml(action.getName(), String.join("\n\n", results));
         } catch (Exception e) {
             showErrorDialog("Ошибка выполнения", e.getMessage());
         } finally {
@@ -219,6 +221,61 @@ public class FirewallActionsView extends VerticalLayout
             btn.setText("Выполнить");
             btn.setIcon(null);
         }
+    }
+
+    private void showResultDialogHtml(String actionName, String result) {
+        Dialog dialog = new Dialog();
+        dialog.setWidth("1100px");
+        dialog.setHeight("800px");
+//        dialog.setModal(true);
+        dialog.setCloseOnOutsideClick(true);
+        dialog.setDraggable(true);
+        dialog.setCloseOnEsc(true);
+        dialog.setResizable(true);
+
+        Html htmlComponent = new Html(result);
+
+        VerticalLayout content = new VerticalLayout();
+        content.setSizeFull();
+
+        H3 header = new H3("Результат выполнения: " + actionName);
+        dialog.add(header);
+
+        // === Минималистичный крестик в правом верхнем углу ===
+        Button closeCross = new Button("✕");
+        closeCross.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_ICON);
+
+        // Стилизация минималистичного крестика
+        closeCross.getStyle()
+                .set("position", "absolute")
+                .set("top", "12px")
+                .set("right", "12px")
+                .set("font-size", "28px")
+                .set("font-weight", "300")
+                .set("color", "#777")
+                .set("cursor", "pointer")
+                .set("z-index", "1000")
+                .set("padding", "4px 10px")
+                .set("line-height", "1");
+
+        // Hover-эффект
+        closeCross.getElement().addEventListener("mouseover", e ->
+                closeCross.getStyle().set("color", "#333"));
+
+        closeCross.getElement().addEventListener("mouseout", e ->
+                closeCross.getStyle().set("color", "#777"));
+
+        closeCross.addClickListener(e -> dialog.close());
+
+
+        dialog.add(closeCross);
+        dialog.add(htmlComponent);
+
+        Button closeBtn = new Button("Закрыть", e -> dialog.close());
+        closeBtn.addThemeName("primary");
+        dialog.add(closeBtn);
+
+        dialog.open();
     }
 
     private void showResultDialog(String actionName, String result) {
