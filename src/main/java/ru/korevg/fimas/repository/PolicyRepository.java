@@ -22,7 +22,7 @@ public interface PolicyRepository extends JpaRepository<Policy, Long> {
 
 //    List<Policy> findByFirewallId(Long firewallId);
 
-    @EntityGraph(attributePaths = {"srcZone", "dstZone", "srcAddresses", "dstAddresses"})
+    @EntityGraph(attributePaths = {"srcZone", "dstZone", "srcAddresses", "dstAddresses", "services"})
     List<Policy> findByFirewallId(Long firewallId);
 
     Page<Policy> findByFirewallId(Long firewallId, Pageable pageable);
