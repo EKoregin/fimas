@@ -224,9 +224,6 @@ public class FortigateCheckAddresses implements LocalCommandHandler {
                 .toList();
     }
 
-
-
-
     /**
      * Получение адресов с удалённого Fortigate по SSH
      */

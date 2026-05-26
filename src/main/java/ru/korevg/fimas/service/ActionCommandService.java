@@ -21,6 +21,7 @@ import ru.korevg.fimas.repository.CommandRepository;
 import ru.korevg.fimas.repository.ModelRepository;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
@@ -112,44 +113,10 @@ public class ActionCommandService {
 
     public List<ActionResponse> getActionsByModel(Long modelId) {
         return modelRepository.findByIdWithActions(modelId)
-                .map(model -> mapper.toActionResponseList(new ArrayList<>(model.getActions())))
-                .orElse(List.of());
+                .map(model -> mapper.toActionResponseList(new ArrayList<>(model.getActions()))
+                        .stream()
+                        .sorted(Comparator.comparingLong(ActionResponse::getId))
+                        .toList())
+                .orElseGet(List::of);
     }
-
-
-    // ==================== Command ====================
-//
-//    public List<CommandResponse> getAllCommands() {
-//        return mapper.toCommandResponseList(commandRepository.findAll());
-//    }
-//
-//    public Optional<CommandResponse> getCommandById(Long id) {
-//        return commandRepository.findById(id).map(mapper::toResponse);
-//    }
-//
-//    public List<CommandResponse> getCommandsByVendor(Long vendorId) {
-//        return mapper.toCommandResponseList(commandRepository.findByVendorId(vendorId));
-//    }
-//
-//    @Transactional
-//    public CommandResponse createCommand(CommandCreate createDto) {
-//        Command command = mapper.toEntity(createDto);
-//        Command saved = commandRepository.save(command);
-//        return mapper.toResponse(saved);
-//    }
-//
-//    @Transactional
-//    public CommandResponse updateCommand(Long id, CommandUpdate updateDto) {
-//        Command command = commandRepository.findById(id)
-//                .orElseThrow(() -> new RuntimeException("Command not found with id: " + id));
-//
-//        mapper.updateEntityFromDto(updateDto, command);
-//        Command saved = commandRepository.save(command);
-//        return mapper.toResponse(saved);
-//    }
-//
-//    @Transactional
-//    public void deleteCommand(Long id) {
-//        commandRepository.deleteById(id);
-//    }
 }
