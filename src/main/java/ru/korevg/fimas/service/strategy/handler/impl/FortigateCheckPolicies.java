@@ -173,6 +173,10 @@ public class FortigateCheckPolicies implements LocalCommandHandler {
             String status = remote != null ? remote.status() : "Отсутствует на FW";
             String statusStyle = remote != null ? "color: green;" : "color: red;";
 
+            if (remote != null && remote.status().equals("disable")) {
+                statusStyle = "color: orange;";
+            }
+
             // Основная строка политики
             sb.append("<tr>")
                     .append("<td>").append(counter.getAndIncrement()).append("</td>")

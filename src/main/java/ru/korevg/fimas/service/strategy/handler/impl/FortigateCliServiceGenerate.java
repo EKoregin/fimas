@@ -117,9 +117,9 @@ public class FortigateCliServiceGenerate implements LocalCommandHandler {
         };
 
         return """
-                edit "%s"
-                    set protocol %s
-                next
+                edit "%s"<br>
+                    set protocol %s<br>
+                next<br>
                 """.formatted(serviceName, protocolName);
     }
 
