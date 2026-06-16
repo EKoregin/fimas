@@ -1,4 +1,4 @@
-package ru.korevg.fimas.service.strategy.handler.impl;
+package ru.korevg.fimas.service.strategy.handler.impl.fortigate;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -8,13 +8,11 @@ import ru.korevg.fimas.entity.Address;
 import ru.korevg.fimas.entity.AddressSubType;
 import ru.korevg.fimas.entity.Command;
 import ru.korevg.fimas.service.AddressService;
-import ru.korevg.fimas.service.PolicyService;
 import ru.korevg.fimas.service.strategy.handler.LocalCommandHandler;
 
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 @Slf4j

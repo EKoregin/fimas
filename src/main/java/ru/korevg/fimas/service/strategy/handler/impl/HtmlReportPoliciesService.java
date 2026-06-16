@@ -1,129 +1,36 @@
 package ru.korevg.fimas.service.strategy.handler.impl;
 
-import com.jcraft.jsch.JSchException;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
-import ru.korevg.fimas.config.AppConstants;
-import ru.korevg.fimas.dto.firewall.FirewallResponse;
-import ru.korevg.fimas.entity.*;
-import ru.korevg.fimas.exception.EntityNotFoundException;
-import ru.korevg.fimas.repository.PolicyRepository;
-import ru.korevg.fimas.service.FirewallService;
-import ru.korevg.fimas.service.strategy.handler.LocalCommandHandler;
-import ru.korevg.fimas.util.SshExecutor;
+import org.springframework.stereotype.Service;
+import ru.korevg.fimas.entity.Address;
+import ru.korevg.fimas.entity.Policy;
+import ru.korevg.fimas.entity.PolicyAction;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Slf4j
-@Component
-@RequiredArgsConstructor
-public class FortigateCheckPolicies implements LocalCommandHandler {
+@Service
+public class HtmlReportPoliciesService {
 
-    private final PolicyRepository policyRepository;
-    private final FirewallService firewallService;
-    private final SshExecutor sshExecutor;
-
-    private static final String GET_POLICIES_COMMAND = "show firewall policy";
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss");
-
-    private static final Pattern NAME_PATTERN = Pattern.compile("set name \"([^\"]+)\"");
-
-    @Override
-    public String handle(Command command, Long firewallId, String username, String password) {
-        FirewallResponse firewall = firewallService.findById(firewallId)
-                .orElseThrow(() -> new EntityNotFoundException("Firewall с ID: " + firewallId + " не найден"));
-
-        List<Policy> localPolicies = policyRepository.findByFirewallId(firewallId);
-
-        log.info("Проверка политик на Firewall: {}", firewall.name());
-
-        String rawPolicies = getPoliciesFromRemote(firewall.mgmtIpAddress(), username, password);
-        Map<String, Map<String, List<String>>> remotePolicies = parsePolicies(rawPolicies);
-
-        return buildComparisonHtml(localPolicies, remotePolicies, firewall.name());
-    }
-
-    /**
-     * Получение политик с удалённого Fortigate по SSH
-     */
-    private String getPoliciesFromRemote(String ipAddress, String username, String password) {
-        try {
-            sshExecutor.createSshSession(ipAddress, AppConstants.SSH, username, password);
-            return sshExecutor.executeSshCommand(GET_POLICIES_COMMAND);
-        } catch (JSchException e) {
-            log.error("Ошибка SSH-подключения к {}: {}", ipAddress, e.getMessage(), e);
-            throw new RuntimeException("Не удалось подключиться к Firewall " + ipAddress, e);
-        } catch (Exception e) {
-            log.error("Ошибка выполнения команды '{}' на {}: {}", GET_POLICIES_COMMAND, ipAddress, e.getMessage(), e);
-            throw new RuntimeException("Ошибка получения политик с Firewall", e);
-        } finally {
-            sshExecutor.disconnect();
-        }
-    }
-
-    /**
-     * Парсинг сырых политик Fortigate
-     */
-    private Map<String, Map<String, List<String>>> parsePolicies(String rawPolicies) {
-        Map<String, Map<String, List<String>>> result = new LinkedHashMap<>();
-
-        String[] blocks = rawPolicies.split("(?=edit\\s)");
-
-        for (String block : blocks) {
-            if (block.trim().isEmpty()) continue;
-
-            String policyName = extractPolicyName(block);
-            if (policyName == null) continue;
-
-            Map<String, List<String>> parameters = extractPolicyParameters(block);
-            result.put(policyName, parameters);
-        }
-
-        return result;
-    }
-
-    private String extractPolicyName(String block) {
-        Matcher matcher = NAME_PATTERN.matcher(block);
-        return matcher.find() ? matcher.group(1) : null;
-    }
-
-    private Map<String, List<String>> extractPolicyParameters(String block) {
-        Map<String, List<String>> parameters = new LinkedHashMap<>();
-        String[] lines = block.split("\\n");
-
-        for (String line : lines) {
-            line = line.trim();
-            if (!line.startsWith("set ")) continue;
-
-            String[] parts = line.split("\\s+", 3);
-            if (parts.length < 3) continue;
-
-            String key = parts[1];
-            String valuePart = parts[2].replace("\"", "").trim();
-
-            parameters.computeIfAbsent(key, k -> new ArrayList<>())
-                    .addAll(Arrays.asList(valuePart.split("\\s+")));
-        }
-        return parameters;
-    }
 
     /**
      * Основной метод построения HTML-отчёта
      */
-    private String buildComparisonHtml(List<Policy> localPolicies,
+    public String buildComparisonHtml(List<Policy> localPolicies,
                                        Map<String, Map<String, List<String>>> remotePolicies,
-                                       String firewallName) {
+                                       String firewallName, String vendor) {
 
         StringBuilder sb = new StringBuilder();
 
         AtomicInteger counter = new AtomicInteger(1);
+        AtomicInteger problemCounter = new AtomicInteger(0);
         AtomicInteger extraEnabled = new AtomicInteger(0);
         AtomicInteger extraDisabled = new AtomicInteger(0);
 
@@ -138,7 +45,9 @@ public class FortigateCheckPolicies implements LocalCommandHandler {
                 .append("</p>");
 
         // Таблица локальных политик
-        appendLocalPoliciesTable(sb, localPolicies, remotePolicies, counter);
+        appendLocalPoliciesTable(sb, localPolicies, remotePolicies, counter, problemCounter, vendor);
+
+        sb.append("<h4>Всего проблем: ").append(problemCounter.get()).append("</h4>");
 
         // Таблица политик, которых нет в базе
         appendExtraPoliciesTable(sb, localPolicies, remotePolicies, counter, extraEnabled, extraDisabled);
@@ -157,7 +66,7 @@ public class FortigateCheckPolicies implements LocalCommandHandler {
     private void appendLocalPoliciesTable(StringBuilder sb,
                                           List<Policy> localPolicies,
                                           Map<String, Map<String, List<String>>> remotePolicies,
-                                          AtomicInteger counter) {
+                                          AtomicInteger counter, AtomicInteger problemCounter, String vendor) {
 
         sb.append("<h3>Политики из базы</h3>");
         sb.append("<table style='border-collapse: collapse; width: 100%;'>");
@@ -168,7 +77,7 @@ public class FortigateCheckPolicies implements LocalCommandHandler {
                 .append("</tr>");
 
         for (Policy policy : localPolicies) {
-            RemotePolicyData remote = getRemotePolicyData(remotePolicies, policy.getName());
+            RemotePolicyData remote = getRemotePolicyData(remotePolicies, policy.getName(), vendor);
 
             String status = remote != null ? remote.status() : "Отсутствует на FW";
             String statusStyle = remote != null ? "color: green;" : "color: red;";
@@ -186,7 +95,7 @@ public class FortigateCheckPolicies implements LocalCommandHandler {
 
             // Детальное сравнение (только если политика есть на удалённом FW)
             if (remote != null) {
-                appendPolicyComparisonRows(sb, policy, remote, counter);
+                appendPolicyComparisonRows(sb, policy, remote, problemCounter);
             }
         }
 
@@ -201,30 +110,74 @@ public class FortigateCheckPolicies implements LocalCommandHandler {
             List<String> srcAddr,
             List<String> dstAddr,
             List<String> services
-    ) {}
+    ) {
+    }
 
-    private RemotePolicyData getRemotePolicyData(Map<String, Map<String, List<String>>> remotePolicies, String policyName) {
-        Map<String, List<String>> remote = remotePolicies.get(policyName);
-        if (remote == null) {
+    private record VendorMapping(
+            String srcZoneKey,
+            String dstZoneKey,
+            String srcAddrKey,
+            String dstAddrKey) {
+
+        public static VendorMapping forVendor(String vendor) {
+            if (vendor == null) {
+                return DEFAULT;
+            }
+
+            return switch (vendor.toLowerCase().trim()) {
+                case "fortinet", "fortigate" -> FORTINET;
+                case "paloalto", "pan", "panos" -> PALO_ALTO;
+                case "checkpoint", "cp" -> CHECKPOINT;
+                case "huawei" -> HUAWEI;
+                default -> DEFAULT;
+            };
+        }
+
+        private static final VendorMapping FORTINET =
+                new VendorMapping("srcintf", "dstintf", "srcaddr", "dstaddr");
+
+        private static final VendorMapping PALO_ALTO =
+                new VendorMapping("source-zone", "destination-zone", "source-address", "destination-address");
+
+        private static final VendorMapping CHECKPOINT =
+                new VendorMapping("source-zone", "destination-zone", "source-address", "destination-address");
+
+        private static final VendorMapping HUAWEI =
+                new VendorMapping("source-zone", "destination-zone", "source-address", "destination-address");
+
+        private static final VendorMapping DEFAULT =
+                new VendorMapping("srcintf", "dstintf", "srcaddr", "dstaddr");
+    }
+
+    private RemotePolicyData getRemotePolicyData(Map<String, Map<String, List<String>>> remotePolicies, String policyName, String vendor) {
+        Map<String, List<String>> policy = remotePolicies.get(policyName);
+        if (policy == null) {
             return null;
         }
 
+        VendorMapping mapping = VendorMapping.forVendor(vendor);
+
         return new RemotePolicyData(
-                remote.getOrDefault("status", List.of("Enabled")).getFirst(),
-                getFirstOrEmpty(remote, "srcintf"),
-                getFirstOrEmpty(remote, "dstintf"),
-//                getFirstOrEmpty(remote, "action").isEmpty() ? "deny" : "accept",
-                remote.getOrDefault("action", List.of("deny")).getFirst(),
-                remote.getOrDefault("srcaddr", List.of()),
-                remote.getOrDefault("dstaddr", List.of()),
-                remote.getOrDefault("service", List.of())
+                getFirstOrDefault(policy, "status", "Enabled"),
+                getFirstOrEmpty(policy, mapping.srcZoneKey()),
+                getFirstOrEmpty(policy, mapping.dstZoneKey()),
+                getFirstOrDefault(policy, "action", "deny"),
+                policy.getOrDefault(mapping.srcAddrKey(), List.of()),
+                policy.getOrDefault(mapping.dstAddrKey(), List.of()),
+                policy.getOrDefault("service", List.of())
         );
     }
 
-    private String getFirstOrEmpty(Map<String, List<String>> map, String key) {
-        List<String> list = map.get(key);
-        return (list != null && !list.isEmpty()) ? list.getFirst() : "";
+    private String getFirstOrDefault(Map<String, List<String>> map, String key, String defaultValue) {
+        List<String> list = map.getOrDefault(key, List.of());
+        return list.isEmpty() ? defaultValue : list.getFirst();
     }
+
+    private String getFirstOrEmpty(Map<String, List<String>> map, String key) {
+        List<String> list = map.getOrDefault(key, List.of());
+        return list.isEmpty() ? "" : list.getFirst();
+    }
+
     // Вывод детального сравнения (зоны, action, адреса)
     private void appendPolicyComparisonRows(StringBuilder sb,
                                             Policy policy,
@@ -244,11 +197,14 @@ public class FortigateCheckPolicies implements LocalCommandHandler {
                 policy.getDstZone().getName().equals(remote.dstZone()));
 
         // Action
-        String localAction = policy.getAction().equals(PolicyAction.PERMIT) ? "accept" : "deny";
+        String localAction = policy.getAction() == PolicyAction.PERMIT ? "permit" : "deny";
+        String remoteAction = normalizeRemoteAction(remote.action());
+        boolean matchAction = localAction.equals(remoteAction);
+
         appendComparisonRow(sb, counter, "Action",
                 "Local: " + localAction,
                 "Remote: " + remote.action(),
-                localAction.equals(remote.action()));
+                matchAction);
 
         // Source Addresses (только различия)
         appendAddressComparisonRow(sb, counter, "Source Addr",
@@ -262,16 +218,30 @@ public class FortigateCheckPolicies implements LocalCommandHandler {
 
         // Services (только различия)
         appendAddressComparisonRow(sb, counter, "Services",
-                policy.getServices().stream().map(Service::getName).toList(),
+                policy.getServices().stream().map(ru.korevg.fimas.entity.Service::getName).toList(),
                 remote.services);
     }
 
+    private String normalizeRemoteAction(String action) {
+        if (action == null) {
+            return "deny";
+        }
+        String lower = action.toLowerCase().trim();
+        return switch (lower) {
+            case "permit", "accept" -> "permit";
+            default -> "deny";
+        };
+    }
+
     private void appendComparisonRow(StringBuilder sb,
-                                     AtomicInteger counter,
+                                     AtomicInteger problemCounter,
                                      String label,
                                      String localValue,
                                      String remoteValue,
                                      boolean isMatch) {
+        if (!isMatch) {
+            problemCounter.getAndIncrement();
+        }
 
         sb.append("<tr>")
                 .append("<td></td>")
@@ -280,13 +250,13 @@ public class FortigateCheckPolicies implements LocalCommandHandler {
 //                .append(label).append(" — ").append(localValue).append(" | ").append(remoteValue)
                 .append("</td>")
                 .append("<td style='color: ").append(isMatch ? "green" : "red").append(";'>")
-                .append(isMatch ? "OK" : "FALSE")
+                .append(isMatch ? "OK" : localValue + " | " + remoteValue)
                 .append("</td>")
                 .append("</tr>");
     }
 
     private void appendAddressComparisonRow(StringBuilder sb,
-                                            AtomicInteger counter,
+                                            AtomicInteger problemCounter,
                                             String label,
                                             List<String> localAddrs,
                                             List<String> remoteAddrs) {
@@ -300,7 +270,9 @@ public class FortigateCheckPolicies implements LocalCommandHandler {
                 .toList();
 
         if (onlyInLocal.isEmpty() && onlyInRemote.isEmpty()) {
-            return; // если адреса идентичны — не выводим строку
+            return;
+        } {
+            problemCounter.getAndIncrement();
         }
 
         sb.append("<tr>")
@@ -309,8 +281,12 @@ public class FortigateCheckPolicies implements LocalCommandHandler {
                 .append(label).append(" — Local: <br>Remote: ")
                 .append("</td>")
                 .append("<td>")
-                .append("Только в Local: ").append(onlyInLocal).append("<br>")
-                .append("Только в Remote: ").append(onlyInRemote)
+                .append("Только в Local: ").append("<span style='color: ")
+                .append(onlyInLocal.isEmpty() ? "green" : "orange").append(";'>")
+                .append(onlyInLocal.isEmpty() ? "нет" : onlyInLocal).append("</span>").append("<br>")
+                .append("Только в Remote: ").append("<span style='color: ")
+                .append(onlyInRemote.isEmpty() ? "green" : "orange").append(";'>")
+                .append(onlyInRemote.isEmpty() ? "нет" : onlyInRemote).append("</span>").append("<br>")
                 .append("</td>")
                 .append("</tr>");
     }
@@ -332,7 +308,7 @@ public class FortigateCheckPolicies implements LocalCommandHandler {
 
         remotePolicies.forEach((name, params) -> {
             if (!localNames.contains(name)) {
-                String status = params.getOrDefault("status", List.of("Enabled")).get(0);
+                String status = params.getOrDefault("status", List.of("Enabled")).getFirst();
                 boolean isEnabled = "enabled".equalsIgnoreCase(status);
 
                 if (isEnabled) extraEnabled.incrementAndGet();
@@ -347,15 +323,5 @@ public class FortigateCheckPolicies implements LocalCommandHandler {
         });
 
         sb.append("</table>");
-    }
-
-    @Override
-    public String getCommandKey() {
-        return "check policies";
-    }
-
-    @Override
-    public String getVendorKey() {
-        return AppConstants.FORTIGATE;
     }
 }

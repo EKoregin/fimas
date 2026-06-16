@@ -1,4 +1,4 @@
-package ru.korevg.fimas.service.strategy.handler.impl;
+package ru.korevg.fimas.service.strategy.handler.impl.fortigate;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

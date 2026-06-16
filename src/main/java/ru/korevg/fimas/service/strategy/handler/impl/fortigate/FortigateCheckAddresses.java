@@ -1,4 +1,4 @@
-package ru.korevg.fimas.service.strategy.handler.impl;
+package ru.korevg.fimas.service.strategy.handler.impl.fortigate;
 
 
 import com.jcraft.jsch.JSchException;
@@ -9,7 +9,6 @@ import ru.korevg.fimas.config.AppConstants;
 import ru.korevg.fimas.dto.firewall.FirewallResponse;
 import ru.korevg.fimas.entity.Address;
 import ru.korevg.fimas.entity.Command;
-import ru.korevg.fimas.entity.Policy;
 import ru.korevg.fimas.exception.EntityNotFoundException;
 import ru.korevg.fimas.service.AddressService;
 import ru.korevg.fimas.service.FirewallService;
