@@ -13,15 +13,15 @@ import ru.korevg.fimas.exception.EntityNotFoundException;
 import ru.korevg.fimas.service.AddressService;
 import ru.korevg.fimas.service.FirewallService;
 import ru.korevg.fimas.service.strategy.handler.LocalCommandHandler;
+import ru.korevg.fimas.service.strategy.handler.impl.HtmlReportAddressService;
 import ru.korevg.fimas.util.SshExecutor;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -31,9 +31,9 @@ public class FortigateCheckAddresses implements LocalCommandHandler {
     private final FirewallService firewallService;
     private final AddressService addressService;
     private final SshExecutor sshExecutor;
+    private final HtmlReportAddressService htmlReportAddressService;
 
     private static final String GET_ADDRESS_COMMAND = "show firewall addrgrp";
-    private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss");
     private static final Pattern NAME_GROUP_PATTERN = Pattern.compile("edit \"([^\"]+)\"");
 
 
@@ -51,130 +51,25 @@ public class FortigateCheckAddresses implements LocalCommandHandler {
         Map<String, List<String>> remoteAddrGroups = parseAddrGroups(rawAddrGroups);
         List<Address> localAddresses = addressService.findAllByFirewallId(firewallId);
 
-        return buildComparisonHtml(localAddresses, remoteAddrGroups, firewall.name());
+        return htmlReportAddressService.buildComparisonHtml(localAddresses, remoteAddrGroups, firewall.name());
     }
 
     /**
-     * Основной метод построения HTML-отчёта
+     * Получение адресов с удалённого Fortigate по SSH
      */
-    private String buildComparisonHtml(List<Address> localAddresses,
-                                       Map<String, List<String>> remoteAddrGroups,
-                                       String firewallName) {
-
-        StringBuilder sb = new StringBuilder();
-
-        AtomicInteger counter = new AtomicInteger(1);
-        AtomicInteger extraCounter = new AtomicInteger(0);
-
-        sb.append("<div style='font-family: Arial, sans-serif; padding: 20px;'>");
-        sb.append("<style>");
-        sb.append("  table { border-collapse: collapse; width: 100%; }");
-        sb.append("  th, td { border: 1px solid #ccc; padding: 10px; }");
-        sb.append("</style>");
-        sb.append("<h2>Сравнение адресов: ").append(firewallName).append("</h2>");
-        sb.append("<p><strong>Дата проверки:</strong> ")
-                .append(LocalDateTime.now().format(DATE_TIME_FORMATTER))
-                .append("</p>");
-
-        // Таблица локальных адресов
-        appendLocalAddressesTable(sb, localAddresses, remoteAddrGroups, counter);
-
-        // Таблица адресов, которых нет в базе но есть на Firewall
-        appendExtraAddressesTable(sb, localAddresses, remoteAddrGroups, extraCounter);
-
-        sb.append("<h3>Итог:</h3>");
-        sb.append("<p>Всего дополнительных адресных групп на FW: <strong>")
-                .append(extraCounter.get()).append("</strong></p>");
-
-        sb.append("</div>");
-
-        return sb.toString();
-    }
-
-
-
-    private void appendLocalAddressesTable(StringBuilder sb, List<Address> localAddrGroups, Map<String, List<String>> remoteAddrGroups, AtomicInteger counter) {
-        sb.append("<h3>Адреса из базы</h3>");
-        sb.append("<table style='border-collapse: collapse; width: 100%;'>");
-        sb.append("<tr style='background-color: #f0f0f0;'>")
-                .append("<th>№</th>")
-                .append("<th>Адресная группа</th>")
-                .append("<th>Статус</th>")
-                .append("</tr>");
-
-        for (Address localAddressGroup : localAddrGroups) {
-            String localAddrGroupName = localAddressGroup.getName();
-
-            sb.append("<tr>")
-                    .append("<td>").append(counter.getAndIncrement()).append("</td>")
-                    .append("<td>").append(localAddrGroupName).append("</td>");
-
-            if (remoteAddrGroups.containsKey(localAddrGroupName)) {
-                List<String> remoteAddresses = remoteAddrGroups.get(localAddrGroupName);
-                Set<String> localAddresses = localAddressGroup.getAddresses();
-                sb.append("<tr>")
-                        .append("<td></td>")
-                        .append("<td>Создана на FW</td>");
-
-                List<String> onlyInLocal = localAddresses.stream()
-                        .filter(addr -> !remoteAddresses.contains(addr))
-                        .toList();
-
-                List<String> onlyInRemote = remoteAddresses.stream()
-                        .filter(addr -> !localAddresses.contains(addr))
-                        .toList();
-                // Если адреса совпадают в группах, то вывести сообщение, что группа уже создана на FW
-                if (onlyInLocal.isEmpty() && onlyInRemote.isEmpty()) {
-                    sb.append("<td style='color: green;'>Группы совпадают</td>");
-//                    sb.append("<tr>")
-//                            .append("<td></td>")
-//                            .append("<td>Local: <br>Remote: ")
-//                            .append("</td>")
-//                            .append("<td>")
-//                            .append("Local:&nbsp;&nbsp;").append(localAddressGroup.getAddresses()).append("<br>")
-//                            .append("Remote: ").append(remoteAddresses)
-//                            .append("</td>")
-//                            .append("</tr>");
-                } else {
-                    sb.append("<td style='color: red;'>Не совпадают</td>");
-                    sb.append("<tr>")
-                            .append("<td></td>")
-                            .append("<td style='text-align: right; font-weight: bold;'>")
-                            .append(" — Local: <br>Remote: ")
-                            .append("</td>")
-                            .append("<td>")
-                            .append("Только в Local: ").append(onlyInLocal).append("<br>")
-                            .append("Только в Remote: ").append(onlyInRemote)
-                            .append("</td>")
-                            .append("</tr>");
-                }
-            } else {
-                sb.append("<td style='color: red;'>Группа не создана на удаленном FW</td>").append("</tr>");
-            }
+    private String getAddressFromRemoteFW(String ipAddress, String username, String password) {
+        try {
+            sshExecutor.createSshSession(ipAddress, AppConstants.SSH, username, password);
+            return sshExecutor.executeSshCommand(GET_ADDRESS_COMMAND);
+        } catch (JSchException e) {
+            log.error("Ошибка SSH-подключения к {}: {}", ipAddress, e.getMessage(), e);
+            throw new RuntimeException("Не удалось подключиться к Firewall " + ipAddress, e);
+        } catch (Exception e) {
+            log.error("Ошибка выполнения команды '{}' на {}: {}", GET_ADDRESS_COMMAND, ipAddress, e.getMessage(), e);
+            throw new RuntimeException("Ошибка получения адресов с Firewall", e);
+        } finally {
+            sshExecutor.disconnect();
         }
-        sb.append("</table>");
-    }
-
-    private void appendExtraAddressesTable(StringBuilder sb,
-                                           List<Address> localAddresses,
-                                           Map<String, List<String>> remoteAddrGroups,
-                                           AtomicInteger extraCounter) {
-        Set<String> localGroupNames = localAddresses.stream().map(Address::getName).collect(Collectors.toSet());
-
-        sb.append("<h3>Адресные группы, которых нет в базе, но есть на Firewall</h3>");
-        sb.append("<table style='border-collapse: collapse; width: 100%;'>");
-        sb.append("<tr style='background-color: #f0f0f0;'><th>№</th><th>Адрес</th></tr>");
-
-        remoteAddrGroups.forEach((name, members) -> {
-           if (!localGroupNames.contains(name)) {
-               sb.append("<tr>")
-                       .append("<td>").append(extraCounter.getAndIncrement()).append("</td>")
-                       .append("<td>").append(name).append("</td>")
-                       .append("</tr>");
-           }
-        });
-
-        sb.append("</table>");
     }
 
     private Map<String, List<String>> parseAddrGroups(String rawAddrGroups) {
@@ -182,10 +77,10 @@ public class FortigateCheckAddresses implements LocalCommandHandler {
         String[] blocks = rawAddrGroups.split("(?=edit\\s)");
         for (String block : blocks) {
             if (block.trim().isEmpty()) continue;
-            
+
             String addrGroupName = extractGroupName(block);
             if (addrGroupName == null) continue;
-            
+
             List<String> groupMembers = extractGroupMembers(block);
             if (groupMembers.isEmpty()) {
                 log.warn("Group: {} is empty", addrGroupName);
@@ -197,7 +92,7 @@ public class FortigateCheckAddresses implements LocalCommandHandler {
 
             result.put(addrGroupName, groupMembers);
         }
-        
+
         return result;
     }
 
@@ -221,24 +116,6 @@ public class FortigateCheckAddresses implements LocalCommandHandler {
                             .filter(s -> !s.isEmpty());
                 })
                 .toList();
-    }
-
-    /**
-     * Получение адресов с удалённого Fortigate по SSH
-     */
-    private String getAddressFromRemoteFW(String ipAddress, String username, String password) {
-        try {
-            sshExecutor.createSshSession(ipAddress, AppConstants.SSH, username, password);
-            return sshExecutor.executeSshCommand(GET_ADDRESS_COMMAND);
-        } catch (JSchException e) {
-            log.error("Ошибка SSH-подключения к {}: {}", ipAddress, e.getMessage(), e);
-            throw new RuntimeException("Не удалось подключиться к Firewall " + ipAddress, e);
-        } catch (Exception e) {
-            log.error("Ошибка выполнения команды '{}' на {}: {}", GET_ADDRESS_COMMAND, ipAddress, e.getMessage(), e);
-            throw new RuntimeException("Ошибка получения адресов с Firewall", e);
-        } finally {
-            sshExecutor.disconnect();
-        }
     }
 
     @Override
