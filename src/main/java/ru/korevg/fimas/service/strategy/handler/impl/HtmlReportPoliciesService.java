@@ -2,9 +2,11 @@ package ru.korevg.fimas.service.strategy.handler.impl;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import ru.korevg.fimas.config.AppConstants;
 import ru.korevg.fimas.entity.Address;
 import ru.korevg.fimas.entity.Policy;
 import ru.korevg.fimas.entity.PolicyAction;
+import ru.korevg.fimas.entity.Zone;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -95,7 +97,7 @@ public class HtmlReportPoliciesService {
 
             // Детальное сравнение (только если политика есть на удалённом FW)
             if (remote != null) {
-                appendPolicyComparisonRows(sb, policy, remote, problemCounter);
+                appendPolicyComparisonRows(sb, policy, remote, problemCounter, vendor);
             }
         }
 
@@ -182,19 +184,31 @@ public class HtmlReportPoliciesService {
     private void appendPolicyComparisonRows(StringBuilder sb,
                                             Policy policy,
                                             RemotePolicyData remote,
-                                            AtomicInteger counter) {
+                                            AtomicInteger counter,
+                                            String vendor) {
+
+        boolean isSrcZoneMatch;
+        boolean isDstZoneMatch;
+
+        if (vendor.equals(AppConstants.HUAWEI)) {
+            isSrcZoneMatch = true;
+            isDstZoneMatch = true;
+        } else {
+            isSrcZoneMatch = policy.getSrcZone().getName().equals(remote.srcZone());
+            isDstZoneMatch = policy.getDstZone().getName().equals(remote.dstZone());
+        }
 
         // Source Zone
         appendComparisonRow(sb, counter, "Source Zone",
                 "Local: " + policy.getSrcZone().getName(),
                 "Remote: " + remote.srcZone(),
-                policy.getSrcZone().getName().equals(remote.srcZone()));
+                isSrcZoneMatch);
 
         // Destination Zone
         appendComparisonRow(sb, counter, "Destination Zone",
                 "Local: " + policy.getDstZone().getName(),
                 "Remote: " + remote.dstZone(),
-                policy.getDstZone().getName().equals(remote.dstZone()));
+                isDstZoneMatch);
 
         // Action
         String localAction = policy.getAction() == PolicyAction.PERMIT ? "permit" : "deny";

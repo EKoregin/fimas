@@ -2,6 +2,7 @@
 package ru.korevg.fimas.views.action;
 
 import com.vaadin.flow.component.Html;
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.dialog.Dialog;
@@ -273,7 +274,20 @@ public class FirewallActionsView extends VerticalLayout
 
         Button closeBtn = new Button("Закрыть", e -> dialog.close());
         closeBtn.addThemeName("primary");
-        dialog.add(closeBtn);
+
+        Button savePdfButton = new Button("Сохранить в PDF", VaadinIcon.DOWNLOAD.create());
+        savePdfButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+
+        savePdfButton.addClickListener(e -> {
+            // JavaScript, который вызывает печать (пользователь выберет "Сохранить как PDF")
+            UI.getCurrent().getPage().executeJs(
+                    "window.print();"
+            );
+        });
+
+        dialog.getFooter().add(savePdfButton, closeBtn);
+
+//        dialog.add(closeBtn);
 
         dialog.open();
     }
