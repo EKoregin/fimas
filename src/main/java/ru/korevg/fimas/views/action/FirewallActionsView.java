@@ -1,12 +1,14 @@
 
 package ru.korevg.fimas.views.action;
 
+import com.lowagie.text.pdf.BaseFont;
 import com.vaadin.flow.component.Html;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
@@ -19,9 +21,15 @@ import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.server.streams.DownloadEvent;
+import com.vaadin.flow.server.streams.DownloadHandler;
 import com.vaadin.flow.spring.annotation.UIScope;
 import lombok.extern.slf4j.Slf4j;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
 import org.springframework.beans.factory.annotation.Value;
+import org.xhtmlrenderer.extend.FontResolver;
+import org.xhtmlrenderer.pdf.ITextRenderer;
 import ru.korevg.fimas.dto.action.ActionResponse;
 import ru.korevg.fimas.dto.command.CommandResponse;
 import ru.korevg.fimas.entity.Firewall;
@@ -33,6 +41,8 @@ import ru.korevg.fimas.service.ActionCommandService;
 import ru.korevg.fimas.service.FirewallExecutionService;
 import ru.korevg.fimas.views.model.ModelListView;
 
+import java.io.ByteArrayOutputStream;
+import java.io.OutputStream;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -279,16 +289,89 @@ public class FirewallActionsView extends VerticalLayout
         savePdfButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
         savePdfButton.addClickListener(e -> {
-            // JavaScript, который вызывает печать (пользователь выберет "Сохранить как PDF")
-            UI.getCurrent().getPage().executeJs(
-                    "window.print();"
-            );
+            try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+
+                String fullHtml = """
+                        <!DOCTYPE html>
+                        <html>
+                        <head>
+                            <meta charset="UTF-8">
+                            <style>
+                                body {
+                                    font-family: 'Arial', sans-serif;
+                                    margin: 30px;
+                                    font-size: 12px;
+                                }
+                                table {
+                                    width: 100%;
+                                    border: 1px solid #999;
+                                    border-collapse: collapse;
+                                }
+                                th, td {
+                                    border: 1px solid #999;
+                                    padding: 9px 12px;
+                                    text-align: left;
+                                }
+                                th {
+                                    background-color: #f0f0f0;
+                                }
+                                .no-wrap-column {
+                                    white-space: nowrap;
+                                }
+                            </style>
+                        </head>
+                        <body>
+                        """ + result + """
+                        </body>
+                        </html>
+                        """;
+
+                Document jsoupDoc = Jsoup.parse(fullHtml);
+                jsoupDoc.outputSettings().syntax(Document.OutputSettings.Syntax.xml);
+                String xhtml = jsoupDoc.html();
+
+                ITextRenderer renderer = new ITextRenderer();
+
+                String fontPath = "src/main/resources/fonts/Arial.ttf";
+
+                renderer.getFontResolver().addFont(fontPath,
+                        BaseFont.IDENTITY_H,
+                        BaseFont.EMBEDDED);
+                renderer.setDocumentFromString(xhtml, null);
+                renderer.layout();
+                renderer.createPDF(baos);
+
+                byte[] pdfBytes = baos.toByteArray();
+
+                DownloadHandler downloadHandler = (DownloadEvent event) -> {
+                    event.setFileName(actionName + "_report.pdf");
+                    event.setContentType("application/pdf");
+                    event.setContentLength(pdfBytes.length);
+
+                    try (OutputStream os = event.getOutputStream()) {
+                        os.write(pdfBytes);
+                    }
+                };
+
+                Anchor downloadLink = new Anchor(downloadHandler, "");
+                downloadLink.getElement().setAttribute("download", "true");
+                downloadLink.setVisible(true);
+
+                UI.getCurrent().add(downloadLink);
+
+                // Запускаем скачивание
+                downloadLink.getElement().executeJs(
+                        "this.click(); setTimeout(() => this.remove(), 200);"
+                );
+
+            } catch (Exception ex) {
+                Notification.show("Ошибка при генерации PDF: " + ex.getMessage(),
+                        8000, Notification.Position.MIDDLE);
+                ex.printStackTrace();
+            }
         });
 
         dialog.getFooter().add(savePdfButton, closeBtn);
-
-//        dialog.add(closeBtn);
-
         dialog.open();
     }
 

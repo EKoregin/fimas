@@ -6,7 +6,6 @@ import ru.korevg.fimas.config.AppConstants;
 import ru.korevg.fimas.entity.Address;
 import ru.korevg.fimas.entity.Policy;
 import ru.korevg.fimas.entity.PolicyAction;
-import ru.korevg.fimas.entity.Zone;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -26,8 +25,8 @@ public class HtmlReportPoliciesService {
      * Основной метод построения HTML-отчёта
      */
     public String buildComparisonHtml(List<Policy> localPolicies,
-                                       Map<String, Map<String, List<String>>> remotePolicies,
-                                       String firewallName, String vendor) {
+                                      Map<String, Map<String, List<String>>> remotePolicies,
+                                      String firewallName, String vendor) {
 
         StringBuilder sb = new StringBuilder();
 
@@ -75,7 +74,7 @@ public class HtmlReportPoliciesService {
         sb.append("<tr style='background-color: #f0f0f0;'>")
                 .append("<th>№</th>")
                 .append("<th>Правило</th>")
-                .append("<th>Статус на FW</th>")
+                .append("<th style='text-align: left';>Статус на FW</th>")
                 .append("</tr>");
 
         for (Policy policy : localPolicies) {
@@ -91,7 +90,9 @@ public class HtmlReportPoliciesService {
             // Основная строка политики
             sb.append("<tr>")
                     .append("<td>").append(counter.getAndIncrement()).append("</td>")
-                    .append("<td>").append(policy.getName()).append("</td>")
+                    .append("<td class=\"no-wrap-column\" style='text-align: right; font-weight: bold;'>")
+                    .append(policy.getName())
+                    .append("</td>")
                     .append("<td style='").append(statusStyle).append("'>").append(status).append("</td>")
                     .append("</tr>");
 
@@ -190,6 +191,7 @@ public class HtmlReportPoliciesService {
         boolean isSrcZoneMatch;
         boolean isDstZoneMatch;
 
+        // Для Huawei зоны не проверяются.
         if (vendor.equals(AppConstants.HUAWEI)) {
             isSrcZoneMatch = true;
             isDstZoneMatch = true;
@@ -221,19 +223,22 @@ public class HtmlReportPoliciesService {
                 matchAction);
 
         // Source Addresses (только различия)
-        appendAddressComparisonRow(sb, counter, "Source Addr",
+        appendAddressComparisonRow(sb, counter, "Source Addresses",
                 policy.getSrcAddresses().stream().map(Address::getName).toList(),
-                remote.srcAddr());
+                remote.srcAddr(),
+                vendor);
 
         // Destination Addresses (только различия)
-        appendAddressComparisonRow(sb, counter, "Destination Addr",
+        appendAddressComparisonRow(sb, counter, "Destination Addresses",
                 policy.getDstAddresses().stream().map(Address::getName).toList(),
-                remote.dstAddr());
+                remote.dstAddr(),
+                vendor);
 
         // Services (только различия)
         appendAddressComparisonRow(sb, counter, "Services",
                 policy.getServices().stream().map(ru.korevg.fimas.entity.Service::getName).toList(),
-                remote.services);
+                remote.services,
+                vendor);
     }
 
     private String normalizeRemoteAction(String action) {
@@ -253,18 +258,20 @@ public class HtmlReportPoliciesService {
                                      String localValue,
                                      String remoteValue,
                                      boolean isMatch) {
-        if (!isMatch) {
-            problemCounter.getAndIncrement();
+        if (isMatch) {
+            return;
         }
+
+        problemCounter.getAndIncrement();
 
         sb.append("<tr>")
                 .append("<td></td>")
-                .append("<td style='text-align: right; font-weight: bold;'>")
+                .append("<td style='text-align: right;'>")
                 .append(label)
-//                .append(label).append(" — ").append(localValue).append(" | ").append(remoteValue)
                 .append("</td>")
-                .append("<td style='color: ").append(isMatch ? "green" : "red").append(";'>")
-                .append(isMatch ? "OK" : localValue + " | " + remoteValue)
+                .append("<td style='color: red;'>").append(localValue).append(" | ").append(remoteValue)
+//                .append("<td style='color: ").append(isMatch ? "green" : "red").append(";'>")
+//                .append(isMatch ? "OK" : localValue + " | " + remoteValue)
                 .append("</td>")
                 .append("</tr>");
     }
@@ -273,36 +280,65 @@ public class HtmlReportPoliciesService {
                                             AtomicInteger problemCounter,
                                             String label,
                                             List<String> localAddrs,
-                                            List<String> remoteAddrs) {
+                                            List<String> remoteAddrs,
+                                            String vendor) {
+
+        // Добавляем any, если адресов нет
+        if (localAddrs.isEmpty()) {
+            if (vendor.equals(AppConstants.HUAWEI)) {
+                localAddrs = List.of("any");
+            } else if (vendor.equals(AppConstants.FORTIGATE)) {
+                localAddrs = List.of("all");
+            }
+        }
 
         List<String> onlyInLocal = localAddrs.stream()
                 .filter(addr -> !remoteAddrs.contains(addr))
                 .toList();
 
+        List<String> finalLocalAddrs = localAddrs;
         List<String> onlyInRemote = remoteAddrs.stream()
-                .filter(addr -> !localAddrs.contains(addr))
+                .filter(addr -> !finalLocalAddrs.contains(addr))
                 .toList();
+
+
 
         if (onlyInLocal.isEmpty() && onlyInRemote.isEmpty()) {
             return;
-        } {
+//            sb.append("<tr>")
+//                    .append("<td></td>")
+//                    .append("<td style='text-align: right;'>")
+//                    .append(label)
+//                    .append("</td>")
+//                    .append("<td style='color: green;'>")
+//                    .append("OK")
+//                    .append("</td>")
+//                    .append("</tr>");
+        } else {
             problemCounter.getAndIncrement();
-        }
+            sb.append("<tr>")
+                    .append("<td></td>")
+                    .append("<td style='text-align: right;'>")
+                    .append(label)
+                    .append("</td>")
+                    .append("<td>");
+            if (!onlyInLocal.isEmpty()) {
+                sb.append("Только в шаблоне: ")
+                        .append("<span style='color: orange;'>")
+                        .append(onlyInLocal)
+                        .append("</span>")
+                        .append("<br>");
+            }
+            if (!onlyInRemote.isEmpty()) {
+                sb.append("Только на удаленном FW: ")
+                        .append("<span style='color: orange;'>")
+                        .append(onlyInRemote)
+                        .append("</span>")
+                        .append("<br>");
+            }
+            sb.append("</td>").append("</tr>");
 
-        sb.append("<tr>")
-                .append("<td></td>")
-                .append("<td style='text-align: right; font-weight: bold;'>")
-                .append(label).append(" — Local: <br>Remote: ")
-                .append("</td>")
-                .append("<td>")
-                .append("Только в Local: ").append("<span style='color: ")
-                .append(onlyInLocal.isEmpty() ? "green" : "orange").append(";'>")
-                .append(onlyInLocal.isEmpty() ? "нет" : onlyInLocal).append("</span>").append("<br>")
-                .append("Только в Remote: ").append("<span style='color: ")
-                .append(onlyInRemote.isEmpty() ? "green" : "orange").append(";'>")
-                .append(onlyInRemote.isEmpty() ? "нет" : onlyInRemote).append("</span>").append("<br>")
-                .append("</td>")
-                .append("</tr>");
+        }
     }
 
     private void appendExtraPoliciesTable(StringBuilder sb,
@@ -316,7 +352,7 @@ public class HtmlReportPoliciesService {
                 .map(Policy::getName)
                 .collect(Collectors.toSet());
 
-        sb.append("<h3>Политики, которых нет в базе, но есть на Firewall</h3>");
+        sb.append("<br><h3>Политики, которых нет в базе, но есть на удаленном Firewall</h3>");
         sb.append("<table style='border-collapse: collapse; width: 100%;'>");
         sb.append("<tr style='background-color: #f0f0f0;'><th>№</th><th>Правило</th><th>Статус</th></tr>");
 

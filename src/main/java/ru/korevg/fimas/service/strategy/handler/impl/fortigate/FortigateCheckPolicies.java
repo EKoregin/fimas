@@ -46,7 +46,8 @@ public class FortigateCheckPolicies implements LocalCommandHandler {
         String rawPolicies = getPoliciesFromRemote(firewall.mgmtIpAddress(), username, password);
         Map<String, Map<String, List<String>>> remotePolicies = parsePolicies(rawPolicies);
 
-        return htmlReportPoliciesService.buildComparisonHtml(localPolicies, remotePolicies, firewall.name(), getVendorKey());
+        return htmlReportPoliciesService.buildComparisonHtml(localPolicies, remotePolicies,
+                firewall.name() + " (" + firewall.description() + ")", getVendorKey());
     }
 
     /**

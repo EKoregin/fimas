@@ -40,3 +40,4 @@ logging:
 
 vaadin:
   exclude-urls: /swagger-ui/**,/v3/api-docs/**
+#  productionMode: true

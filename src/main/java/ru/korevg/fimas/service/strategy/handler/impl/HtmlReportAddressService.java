@@ -22,8 +22,8 @@ public class HtmlReportAddressService {
      * Основной метод построения HTML-отчёта
      */
     public String buildComparisonHtml(List<Address> localAddresses,
-                                       Map<String, List<String>> remoteAddrGroups,
-                                       String firewallName) {
+                                      Map<String, List<String>> remoteAddrGroups,
+                                      String firewallName) {
 
         StringBuilder sb = new StringBuilder();
 
@@ -70,14 +70,16 @@ public class HtmlReportAddressService {
 
             sb.append("<tr>")
                     .append("<td>").append(counter.getAndIncrement()).append("</td>")
-                    .append("<td>").append(localAddrGroupName).append("</td>");
+                    .append("<td class=\"no-wrap-column\" style='text-align: right; font-weight: bold;'>")
+                    .append(localAddrGroupName)
+                    .append("</td>");
 
             if (remoteAddrGroups.containsKey(localAddrGroupName)) {
                 List<String> remoteAddresses = remoteAddrGroups.get(localAddrGroupName);
                 Set<String> localAddresses = localAddressGroup.getAddresses();
                 sb.append("<tr>")
                         .append("<td></td>")
-                        .append("<td>Создана на FW</td>");
+                        .append("<td style='text-align: right;'>Создана на FW</td>");
 
                 List<String> onlyInLocal = localAddresses.stream()
                         .filter(addr -> !remoteAddresses.contains(addr))
@@ -99,11 +101,11 @@ public class HtmlReportAddressService {
 //                            .append("</td>")
 //                            .append("</tr>");
                 } else {
-                    sb.append("<td style='color: red;'>Не совпадают</td>");
+                    sb.append("<td style='color: red;'>Есть отличия</td>");
                     sb.append("<tr>")
                             .append("<td></td>")
-                            .append("<td style='text-align: right; font-weight: bold;'>")
-                            .append(" — Local: <br>Remote: ")
+                            .append("<td style='text-align: right;'>")
+                            .append("Local: <br>Remote: ")
                             .append("</td>")
                             .append("<td>")
                             .append("Только в Local: ").append(onlyInLocal).append("<br>")

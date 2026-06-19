@@ -51,7 +51,8 @@ public class HuaweiCheckPolicies implements LocalCommandHandler {
         String cutPolicies = cutExcludedOutput(rawPolicies);
         Map<String, Map<String, List<String>>> remotePolicies = parsePolicies(cutPolicies);
 
-        return htmlReportPoliciesService.buildComparisonHtml(localPolicies, remotePolicies, firewall.name(), getVendorKey());
+        return htmlReportPoliciesService.buildComparisonHtml(localPolicies, remotePolicies,
+                firewall.name() + " (" + firewall.description() + ")", getVendorKey());
     }
 
     public String readFileToString(String filePath) {
@@ -142,8 +143,11 @@ public class HuaweiCheckPolicies implements LocalCommandHandler {
             parameters.computeIfAbsent(key, k -> new ArrayList<>()).add(value);
         }
 
-        parameters.computeIfAbsent("source-zone", k -> new ArrayList<>()).add("ANY");
-        parameters.computeIfAbsent("destination-zone", k -> new ArrayList<>()).add("ANY");
+        parameters.putIfAbsent("source-zone", List.of("ANY"));
+        parameters.putIfAbsent("destination-zone", List.of("ANY"));
+        parameters.putIfAbsent("source-address", List.of("any"));
+        parameters.putIfAbsent("destination-address", List.of("any"));
+        parameters.putIfAbsent("service", List.of("any"));
 
         return parameters;
     }
