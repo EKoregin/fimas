@@ -8,18 +8,17 @@ import ru.korevg.fimas.entity.Policy;
 import ru.korevg.fimas.entity.PolicyAction;
 
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import static ru.korevg.fimas.config.AppConstants.DATE_TIME_FORMATTER;
+
 @Slf4j
 @Service
 public class HtmlReportPoliciesService {
-
-    private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss");
 
     /**
      * Основной метод построения HTML-отчёта
@@ -270,8 +269,6 @@ public class HtmlReportPoliciesService {
                 .append(label)
                 .append("</td>")
                 .append("<td style='color: red;'>").append(localValue).append(" | ").append(remoteValue)
-//                .append("<td style='color: ").append(isMatch ? "green" : "red").append(";'>")
-//                .append(isMatch ? "OK" : localValue + " | " + remoteValue)
                 .append("</td>")
                 .append("</tr>");
     }
@@ -305,15 +302,6 @@ public class HtmlReportPoliciesService {
 
         if (onlyInLocal.isEmpty() && onlyInRemote.isEmpty()) {
             return;
-//            sb.append("<tr>")
-//                    .append("<td></td>")
-//                    .append("<td style='text-align: right;'>")
-//                    .append(label)
-//                    .append("</td>")
-//                    .append("<td style='color: green;'>")
-//                    .append("OK")
-//                    .append("</td>")
-//                    .append("</tr>");
         } else {
             problemCounter.getAndIncrement();
             sb.append("<tr>")

@@ -1,5 +1,7 @@
 package ru.korevg.fimas.config;
 
+import java.time.format.DateTimeFormatter;
+
 public final class AppConstants {
 
     private AppConstants() {
@@ -10,4 +12,5 @@ public final class AppConstants {
     public static final String HUAWEI = "huawei";
     public static final String IP_PLUG = "127.127.127.127/32";
     public static final Integer SSH = 22;
+    public static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss");
 }

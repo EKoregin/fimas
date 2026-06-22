@@ -5,18 +5,17 @@ import org.springframework.stereotype.Service;
 import ru.korevg.fimas.entity.Address;
 
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import static ru.korevg.fimas.config.AppConstants.DATE_TIME_FORMATTER;
+
 @Slf4j
 @Service
 public class HtmlReportAddressService {
-
-    private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss");
 
     /**
      * Основной метод построения HTML-отчёта
@@ -68,18 +67,9 @@ public class HtmlReportAddressService {
         for (Address localAddressGroup : localAddrGroups) {
             String localAddrGroupName = localAddressGroup.getName();
 
-            sb.append("<tr>")
-                    .append("<td>").append(counter.getAndIncrement()).append("</td>")
-                    .append("<td class=\"no-wrap-column\" style='text-align: right; font-weight: bold;'>")
-                    .append(localAddrGroupName)
-                    .append("</td>");
-
             if (remoteAddrGroups.containsKey(localAddrGroupName)) {
                 List<String> remoteAddresses = remoteAddrGroups.get(localAddrGroupName);
                 Set<String> localAddresses = localAddressGroup.getAddresses();
-                sb.append("<tr>")
-                        .append("<td></td>")
-                        .append("<td style='text-align: right;'>Создана на FW</td>");
 
                 List<String> onlyInLocal = localAddresses.stream()
                         .filter(addr -> !remoteAddresses.contains(addr))
@@ -88,19 +78,13 @@ public class HtmlReportAddressService {
                 List<String> onlyInRemote = remoteAddresses.stream()
                         .filter(addr -> !localAddresses.contains(addr))
                         .toList();
-                // Если адреса совпадают в группах, то вывести сообщение, что группа уже создана на FW
-                if (onlyInLocal.isEmpty() && onlyInRemote.isEmpty()) {
-                    sb.append("<td style='color: green;'>Группы совпадают</td>");
-//                    sb.append("<tr>")
-//                            .append("<td></td>")
-//                            .append("<td>Local: <br>Remote: ")
-//                            .append("</td>")
-//                            .append("<td>")
-//                            .append("Local:&nbsp;&nbsp;").append(localAddressGroup.getAddresses()).append("<br>")
-//                            .append("Remote: ").append(remoteAddresses)
-//                            .append("</td>")
-//                            .append("</tr>");
-                } else {
+
+                if (!onlyInLocal.isEmpty() || !onlyInRemote.isEmpty()) {
+                    sb.append("<tr>")
+                            .append("<td>").append(counter.getAndIncrement()).append("</td>")
+                            .append("<td class=\"no-wrap-column\" style='text-align: right; font-weight: bold;'>")
+                            .append(localAddrGroupName)
+                            .append("</td>");
                     sb.append("<td style='color: red;'>Есть отличия</td>");
                     sb.append("<tr>")
                             .append("<td></td>")
@@ -114,6 +98,11 @@ public class HtmlReportAddressService {
                             .append("</tr>");
                 }
             } else {
+                sb.append("<tr>")
+                        .append("<td>").append(counter.getAndIncrement()).append("</td>")
+                        .append("<td class=\"no-wrap-column\" style='text-align: right; font-weight: bold;'>")
+                        .append(localAddrGroupName)
+                        .append("</td>");
                 sb.append("<td style='color: red;'>Группа не создана на удаленном FW</td>").append("</tr>");
             }
         }
