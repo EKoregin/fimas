@@ -32,6 +32,8 @@ FROM eclipse-temurin:21-jre
 
 WORKDIR /app
 
+COPY --from=builder /app/src/main/resources/fonts /app/fonts
+
 # Копируем только готовый JAR
 COPY --from=builder /app/target/fimas-0.0.1.jar app.jar
 

@@ -28,7 +28,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.springframework.beans.factory.annotation.Value;
-import org.xhtmlrenderer.extend.FontResolver;
 import org.xhtmlrenderer.pdf.ITextRenderer;
 import ru.korevg.fimas.dto.action.ActionResponse;
 import ru.korevg.fimas.dto.command.CommandResponse;
@@ -332,7 +331,8 @@ public class FirewallActionsView extends VerticalLayout
 
                 ITextRenderer renderer = new ITextRenderer();
 
-                String fontPath = "src/main/resources/fonts/Arial.ttf";
+//                String fontPath = "src/main/resources/fonts/Arial.ttf";
+                String fontPath = "/app/fonts/Arial.ttf";
 
                 renderer.getFontResolver().addFont(fontPath,
                         BaseFont.IDENTITY_H,
